@@ -394,7 +394,7 @@ label {
   height: 52px;
   flex: none;
   border-radius: 6px;
-  object-fit: cover;
+  object-fit: contain;
   background: var(--surface-2);
   border: 1px solid var(--border);
 }

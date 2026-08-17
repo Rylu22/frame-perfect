@@ -52,6 +52,9 @@ export default async function DashboardPage() {
             Signed in as <b>{profile?.username ?? user.email}</b>
           </div>
           <div style={{ display: "flex", gap: "8px" }}>
+            <Link className="btn btn-ghost btn-sm" href="/profile">
+              My Profile
+            </Link>
             {isAdmin && !viewAsUserId && (
               <Link className="btn btn-ghost btn-sm" href="/admin">
                 Admin Console
