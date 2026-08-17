@@ -1,0 +1,1952 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Frame Perfect</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@600;700;800&family=Rajdhani:wght@500;600;700&family=JetBrains+Mono:wght@500;600&display=swap');
+
+:root{
+  --bg:#0a0c16;
+  --surface:#141830;
+  --surface-2:#1b2040;
+  --border:#2a3060;
+  --text:#e9ecf9;
+  --muted:#7c85ad;
+  --accent:#8a3ffc;
+  --accent-2:#ff4fd8;
+  --danger:#ff5b6e;
+  --ok:#3ddc84;
+}
+*{box-sizing:border-box; margin:0; padding:0;}
+body{
+  background:
+    radial-gradient(circle at 15% 0%, rgba(138,63,252,0.14), transparent 45%),
+    radial-gradient(circle at 90% 15%, rgba(255,79,216,0.10), transparent 40%),
+    var(--bg);
+  color:var(--text);
+  font-family:'Rajdhani', sans-serif;
+  min-height:100vh;
+}
+.screen{ display:none; min-height:100vh; padding:32px 20px 80px; }
+.screen.active{ display:block; }
+.wrap{ max-width:760px; margin:0 auto; }
+.wrap-narrow{ max-width:420px; margin:0 auto; }
+
+h1,h2,h3{ font-family:'Orbitron', sans-serif; letter-spacing:1px; }
+
+.eyebrow{
+  font-family:'JetBrains Mono', monospace; font-size:11px; letter-spacing:4px;
+  color:var(--muted); text-transform:uppercase;
+}
+
+/* ---- buttons / inputs ---- */
+.btn{
+  font-family:'Rajdhani',sans-serif; font-weight:700; letter-spacing:.5px;
+  border:none; cursor:pointer; padding:12px 22px; font-size:15px;
+  clip-path:polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
+  transition:transform .12s ease, filter .12s ease;
+}
+.btn:hover{ filter:brightness(1.12); transform:translateY(-1px); }
+.btn:active{ transform:translateY(0); }
+.btn-primary{ background:linear-gradient(120deg,var(--accent),var(--accent-2)); color:#fff; }
+.btn-ghost{ background:var(--surface-2); color:var(--text); border:1px solid var(--border); }
+.btn-danger{ background:transparent; color:var(--danger); border:1px solid #4a2030; padding:8px 12px; font-size:13px; }
+.btn-block{ width:100%; text-align:center; }
+.btn-sm{ padding:8px 14px; font-size:13px; }
+
+input[type=text], input[type=password], input[type=number], select{
+  width:100%;
+  background:var(--surface-2);
+  border:1px solid var(--border);
+  color:var(--text);
+  font-family:'Rajdhani',sans-serif;
+  font-weight:600;
+  font-size:15px;
+  padding:11px 13px;
+  border-radius:4px;
+  outline:none;
+}
+input:focus, select:focus{ border-color:var(--accent); }
+label{ font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:1.5px; display:block; margin-bottom:5px; }
+.field{ margin-bottom:14px; }
+
+.card-panel{
+  background:var(--surface); border:1px solid var(--border);
+  clip-path:polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 14px 100%, 0 calc(100% - 14px));
+  padding:22px;
+}
+
+.msg{ font-size:13px; font-weight:600; margin-top:10px; min-height:18px; }
+.msg.error{ color:var(--danger); }
+.msg.ok{ color:var(--ok); }
+
+.hidden{ display:none !important; }
+
+/* ---- HOME ---- */
+#screen-home.active{ display:flex; align-items:center; justify-content:center; }
+.home-hero{ text-align:center; }
+.home-hero h1{
+  font-size:clamp(34px,7vw,54px); font-weight:800; margin:10px 0 4px;
+  background:linear-gradient(120deg,#fff 10%, var(--accent) 55%, var(--accent-2) 90%);
+  -webkit-background-clip:text; background-clip:text; color:transparent;
+}
+.home-hero .sub{ color:var(--muted); font-weight:600; font-size:16px; margin-bottom:34px; }
+.home-actions{ display:flex; gap:12px; justify-content:center; flex-wrap:wrap; }
+
+/* ---- AUTH ---- */
+.auth-tabs{ display:flex; gap:8px; margin-bottom:20px; }
+.auth-tab{
+  flex:1; text-align:center; padding:10px; cursor:pointer; font-weight:700;
+  background:var(--surface-2); border:1px solid var(--border); color:var(--muted);
+  clip-path:polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px));
+}
+.auth-tab.active{ color:#fff; border-color:var(--accent); background:linear-gradient(120deg, rgba(138,63,252,.25), rgba(255,79,216,.15)); }
+
+/* ---- DASHBOARD ---- */
+.topbar{ display:flex; justify-content:space-between; align-items:center; margin-bottom:26px; }
+.topbar .who{ font-size:13px; color:var(--muted); font-weight:600; }
+.topbar .who b{ color:var(--text); }
+.section-title{ font-size:13px; text-transform:uppercase; letter-spacing:2px; color:var(--muted); margin:26px 0 12px; }
+
+.list-row{
+  display:flex; align-items:center; justify-content:space-between; gap:12px;
+  background:var(--surface); border:1px solid var(--border);
+  clip-path:polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px);
+  padding:14px 16px; margin-bottom:10px; cursor:pointer;
+}
+.list-row:hover{ border-color:var(--accent); }
+.list-row .lname{ font-weight:700; font-size:16px; }
+.list-row .lmeta{ color:var(--muted); font-size:12px; font-family:'JetBrains Mono',monospace; }
+.empty-note{ color:var(--muted); font-size:14px; padding:14px 0; }
+
+/* ---- BUILDER ---- */
+.builder-head{ display:flex; justify-content:space-between; align-items:flex-start; gap:16px; row-gap:16px; flex-wrap:wrap; margin:26px 0 30px; }
+.builder-head h2{ font-size:24px; margin-bottom:10px; }
+.progress-chip{
+  font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--muted);
+  background:var(--surface-2); border:1px solid var(--border); padding:7px 14px; border-radius:20px;
+  display:inline-block;
+}
+
+.level-card{
+  display:flex; align-items:center; gap:14px;
+  background:var(--surface); border:1px solid var(--border);
+  clip-path:polygon(16px 0, 100% 0, 100% calc(100% - 16px), calc(100% - 16px) 100%, 0 100%, 0 16px);
+  padding:12px 14px; margin-bottom:10px; cursor:grab;
+}
+.level-card.dragging{ opacity:.4; }
+.level-card.drag-over{ border-color:#fff; }
+.pos-badge{
+  width:36px; height:36px; flex:none; background:var(--surface-2);
+  border:2px solid var(--accent); transform:rotate(45deg);
+  display:flex; align-items:center; justify-content:center;
+  box-shadow:0 0 12px -2px var(--accent);
+}
+.pos-badge span{ transform:rotate(-45deg); font-family:'JetBrains Mono',monospace; font-weight:700; font-size:13px; }
+.lv-thumb{
+  width:52px; height:52px; flex:none; border-radius:6px; object-fit:cover;
+  background:var(--surface-2); border:1px solid var(--border);
+}
+.lv-info{ flex:1; min-width:0; }
+.lv-info .lv-name{ font-weight:700; font-size:16px; }
+.lv-info .lv-meta{ color:var(--muted); font-size:12px; font-weight:600; }
+.lv-actions{ display:flex; gap:6px; flex:none; }
+.icon-btn{
+  background:var(--surface-2); border:1px solid var(--border); color:var(--muted);
+  width:30px; height:30px; border-radius:6px; display:flex; align-items:center; justify-content:center;
+  cursor:pointer; font-size:14px;
+}
+.icon-btn:hover{ color:var(--text); border-color:var(--accent); }
+
+.tier-tag{
+  font-family:'JetBrains Mono',monospace; font-size:10px; font-weight:700; letter-spacing:.5px;
+  text-transform:uppercase; padding:2px 8px; border-radius:20px; border:1px solid var(--tier,#666);
+  color:var(--tier,#666); white-space:nowrap;
+}
+.victor-count{ font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--muted); }
+
+.rule-box{
+  background:var(--surface-2); border:1px solid var(--border); border-radius:6px;
+  padding:14px; font-size:14px; font-weight:600; white-space:pre-wrap; margin-bottom:18px; color:var(--text);
+}
+.rule-box:empty::before{ content:'No rules have been set for this list.'; color:var(--muted); font-weight:600; }
+textarea{
+  width:100%; background:var(--surface-2); border:1px solid var(--border); color:var(--text);
+  font-family:'Rajdhani',sans-serif; font-weight:600; font-size:14px; padding:11px 13px;
+  border-radius:4px; outline:none; resize:vertical; min-height:90px;
+}
+textarea:focus{ border-color:var(--accent); }
+
+.choice-row{ display:flex; gap:10px; margin-bottom:14px; }
+.choice-opt{
+  flex:1; text-align:center; padding:12px; cursor:pointer; font-weight:700;
+  background:var(--surface-2); border:1px solid var(--border); color:var(--muted); border-radius:6px;
+}
+.choice-opt.active{ color:#fff; border-color:var(--accent); background:linear-gradient(120deg, rgba(138,63,252,.25), rgba(255,79,216,.15)); }
+
+.record-card{
+  background:var(--surface); border:1px solid var(--border);
+  clip-path:polygon(14px 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%, 0 14px);
+  padding:14px 16px; margin-bottom:10px;
+}
+.record-top{ display:flex; justify-content:space-between; align-items:flex-start; gap:10px; flex-wrap:wrap; }
+.record-top .who{ font-weight:700; font-size:15px; }
+.record-top .type-tag{
+  font-family:'JetBrains Mono',monospace; font-size:10px; font-weight:700; text-transform:uppercase;
+  padding:2px 8px; border-radius:20px; letter-spacing:.5px;
+}
+.type-tag.victor{ border:1px solid var(--ok); color:var(--ok); }
+.type-tag.verifier{ border:1px solid var(--accent-2); color:var(--accent-2); }
+.status-tag{
+  font-family:'JetBrains Mono',monospace; font-size:10px; font-weight:700; text-transform:uppercase;
+  padding:2px 8px; border-radius:20px; letter-spacing:.5px;
+}
+.status-tag.pending{ border:1px solid var(--muted); color:var(--muted); }
+.status-tag.accepted{ border:1px solid var(--ok); color:var(--ok); }
+.status-tag.declined{ border:1px solid var(--danger); color:var(--danger); }
+.record-meta{ color:var(--muted); font-size:13px; font-weight:600; margin-top:6px; }
+.record-actions{ display:flex; gap:8px; margin-top:12px; }
+.decline-reason{ margin-top:8px; font-size:13px; color:var(--danger); font-weight:600; }
+
+.points-row{
+  display:flex; justify-content:space-between; align-items:center;
+  background:var(--surface); border:1px solid var(--border); border-radius:6px;
+  padding:10px 14px; margin-bottom:8px;
+}
+.points-row .pname{ font-weight:700; }
+.points-row .pval{ font-family:'JetBrains Mono',monospace; color:var(--accent-2); font-weight:700; }
+
+.pc-rank-row{ display:flex; align-items:center; justify-content:space-between; gap:10px; padding:9px 2px; border-bottom:1px solid var(--border); }
+.pc-rank-row:last-child{ border-bottom:none; }
+.pc-rank-row .pc-label{ font-family:'JetBrains Mono',monospace; font-size:13px; color:var(--text); font-weight:600; }
+.pc-rank-row input{ width:110px; }
+
+.mode-banner{
+  display:flex; justify-content:space-between; align-items:center; gap:10px;
+  padding:10px 16px; border-radius:6px; font-size:13px; font-weight:700; margin-bottom:18px;
+}
+.mode-banner[data-role="viewonly"]{ background:rgba(255,91,110,.12); border:1px solid rgba(255,91,110,.4); color:#ff9fae; }
+.mode-banner[data-role="testing"]{ background:rgba(138,63,252,.12); border:1px solid rgba(138,63,252,.4); color:#c9a8ff; }
+.mode-banner .mb-exit{ cursor:pointer; text-decoration:underline; flex:none; }
+
+.acct-row{
+  display:flex; align-items:center; gap:12px;
+  background:var(--surface); border:1px solid var(--border); border-radius:6px;
+  padding:10px 14px; margin-bottom:8px;
+}
+.acct-row input[type=checkbox]{ width:16px; height:16px; flex:none; }
+.acct-row .acct-name{ flex:1; font-weight:700; }
+.tester-row{
+  display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+  background:var(--surface); border:1px solid var(--border); border-radius:6px;
+  padding:10px 14px; margin-bottom:8px;
+}
+.tester-row input[type=text]{ flex:1; min-width:120px; }
+
+.legacy-list{ border:1px solid var(--border); border-radius:6px; overflow:hidden; }
+.legacy-row{
+  display:flex; justify-content:space-between; align-items:center; gap:14px;
+  padding:16px 18px; border-bottom:1px solid var(--border); font-size:13px; color:var(--muted);
+}
+.legacy-row:last-child{ border-bottom:none; }
+.legacy-row .lg-left{ display:flex; flex-direction:column; gap:5px; }
+.legacy-row .lg-name{ color:var(--text); font-weight:700; font-size:15px; font-family:'Rajdhani',sans-serif; }
+.legacy-row .lg-sub{ font-size:12px; color:var(--muted); line-height:1.5; }
+.legacy-row .lg-rank{ font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--muted); flex:none; }
+
+/* ---- MODAL ---- */
+.modal-backdrop{
+  display:none; position:fixed; inset:0; background:rgba(4,5,12,.75);
+  align-items:center; justify-content:center; z-index:50; padding:20px;
+}
+.modal-backdrop.active{ display:flex; }
+.modal{
+  background:var(--surface); border:1px solid var(--border); width:100%; max-width:440px;
+  clip-path:polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 16px 100%, 0 calc(100% - 16px));
+  padding:22px; max-height:88vh; overflow-y:auto;
+}
+.modal h3{ font-size:18px; margin-bottom:16px; }
+.row2{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+
+.dropzone{
+  border:2px dashed var(--border); border-radius:8px; padding:18px; text-align:center;
+  color:var(--muted); font-size:13px; font-weight:600; cursor:pointer; margin-bottom:14px;
+  position:relative; overflow:hidden;
+}
+.dropzone.drag{ border-color:var(--accent); color:var(--text); }
+.dropzone img{ max-width:100%; max-height:110px; border-radius:6px; margin-top:8px; }
+.dropzone input{ display:none; }
+
+.modal-actions{ display:flex; justify-content:flex-end; gap:8px; margin-top:16px; }
+
+.back-link{ color:var(--muted); font-size:13px; font-weight:700; cursor:pointer; }
+.back-link:hover{ color:var(--text); }
+</style>
+</head>
+<body>
+
+<!-- HOME -->
+<div class="screen active" id="screen-home">
+  <div class="home-hero">
+    <div class="eyebrow">// list building for geometry dash</div>
+    <h1>FRAME PERFECT</h1>
+    <div class="sub">Geometry Dash List Building</div>
+    <div class="home-actions">
+      <button class="btn btn-primary" onclick="goAuth('signup')">Sign Up</button>
+      <button class="btn btn-ghost" onclick="goAuth('login')">Log In</button>
+    </div>
+  </div>
+</div>
+
+<!-- AUTH MODAL -->
+<div class="modal-backdrop" id="authModal">
+  <div class="modal">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+      <h3 style="margin:0;">Welcome</h3>
+      <div class="icon-btn" onclick="closeAuthModal()" title="Close">&#10005;</div>
+    </div>
+    <div class="auth-tabs">
+      <div class="auth-tab" id="tab-signup" onclick="goAuth('signup')">Sign Up</div>
+      <div class="auth-tab" id="tab-login" onclick="goAuth('login')">Log In</div>
+    </div>
+    <div class="field" style="margin-top:16px;">
+      <label>Username</label>
+      <input type="text" id="authUsername" autocomplete="username">
+    </div>
+    <div class="field">
+      <label>Password</label>
+      <input type="password" id="authPassword" autocomplete="current-password">
+    </div>
+    <button class="btn btn-primary btn-block" id="authSubmit"></button>
+    <div class="msg" id="authMsg"></div>
+  </div>
+</div>
+
+<!-- ADMIN DASHBOARD -->
+<div class="screen" id="screen-admin">
+  <div class="wrap">
+    <div class="topbar">
+      <div class="who">Admin console — <b>fpadmin22</b></div>
+      <button class="btn btn-ghost btn-sm" onclick="logOut()">Log Out</button>
+    </div>
+    <div class="auth-tabs" style="margin-top:20px;">
+      <div class="auth-tab" id="adminTabAccounts" onclick="setAdminTab('accounts')">Manage Accounts</div>
+      <div class="auth-tab" id="adminTabTesting" onclick="setAdminTab('testing')">Testing</div>
+    </div>
+
+    <div id="adminAccountsPanel">
+      <input type="text" id="adminAcctSearch" placeholder="Search accounts..." style="margin-top:18px;" oninput="renderAdminAccounts()">
+      <div id="adminAcctList" style="margin-top:12px;"></div>
+      <button class="btn btn-danger" style="margin-top:10px;" onclick="deleteSelectedAccounts()">Delete Selected</button>
+    </div>
+
+    <div id="adminTestingPanel" class="hidden">
+      <div style="color:var(--muted); font-size:13px; margin:18px 0;">Passwordless testing accounts, fully sandboxed from real users and lists.</div>
+      <button class="btn btn-primary" onclick="createTesterAccount()">+ New Tester</button>
+      <div class="msg" id="testerMsg"></div>
+      <div id="adminTesterList" style="margin-top:14px;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<div class="screen" id="screen-dashboard">
+  <div class="wrap">
+    <div class="topbar">
+      <div class="who">Signed in as <b id="dashUsername"></b></div>
+      <button class="btn btn-ghost btn-sm" onclick="logOut()">Log Out</button>
+    </div>
+    <div class="mode-banner hidden" data-role="viewonly">
+      <span>&#128065; Viewing as <b id="dashViewName"></b> — read only</span>
+      <span class="mb-exit" onclick="exitAdminView()">Exit</span>
+    </div>
+    <div class="mode-banner hidden" data-role="testing">
+      <span>&#129514; Testing sandbox as <b id="dashTestName"></b> — isolated from real data</span>
+      <span class="mb-exit" onclick="exitTesting()">Exit</span>
+    </div>
+    <h2>Your Lists</h2>
+    <button class="btn btn-primary" id="buildListBtn" style="margin-top:14px;" onclick="openCreateList()">+ Build a New List</button>
+
+    <div class="section-title">Your Lists</div>
+    <div id="myLists"></div>
+
+    <div class="section-title">Search Lists</div>
+    <input type="text" id="listSearch" placeholder="Search by list name..." oninput="renderDashboardLists()">
+    <div id="allLists" style="margin-top:10px;"></div>
+  </div>
+</div>
+
+<!-- CREATE LIST -->
+<div class="screen" id="screen-create">
+  <div class="wrap-narrow">
+    <div class="back-link" onclick="showScreen('screen-dashboard')">&larr; back to dashboard</div>
+    <h2 style="margin:14px 0 18px;">Build a New List</h2>
+    <div class="card-panel">
+      <div class="field">
+        <label>List name</label>
+        <input type="text" id="newListName" placeholder="e.g. Frame Perfect Top 50">
+      </div>
+      <div class="field">
+        <label>How many levels on this list?</label>
+        <input type="number" id="newListSize" min="1" value="25">
+      </div>
+      <div class="field">
+        <label>List password (controls who can edit this list)</label>
+        <input type="password" id="newListPass">
+      </div>
+      <div class="field">
+        <label>Confirm list password</label>
+        <input type="password" id="newListPass2">
+      </div>
+      <div class="field">
+        <label>Rules for record submissions <span style="text-transform:none; letter-spacing:0;">(shown to players)</span></label>
+        <textarea id="newListRules" placeholder="e.g. Video must show the full attempt with no cuts..."></textarea>
+      </div>
+      <button class="btn btn-primary btn-block" onclick="submitCreateList()">Create List</button>
+      <div class="msg" id="createMsg"></div>
+    </div>
+  </div>
+</div>
+
+<!-- UNLOCK LIST -->
+<div class="screen" id="screen-unlock">
+  <div class="wrap-narrow">
+    <div class="back-link" onclick="showScreen('screen-dashboard')">&larr; back to dashboard</div>
+    <h2 style="margin:14px 0 18px;" id="unlockTitle">Enter List Password</h2>
+    <div class="card-panel">
+      <div class="field">
+        <label>List password</label>
+        <input type="password" id="unlockPass">
+      </div>
+      <button class="btn btn-primary btn-block" onclick="submitUnlock()">Unlock List</button>
+      <div class="msg" id="unlockMsg"></div>
+    </div>
+  </div>
+</div>
+
+<!-- BUILDER -->
+<div class="screen" id="screen-builder">
+  <div class="wrap">
+    <div class="back-link" onclick="showScreen('screen-dashboard')">&larr; back to dashboard</div>
+    <div class="mode-banner hidden" data-role="testing" id="builderTestBanner">
+      <span>&#129514; Testing sandbox as <b id="builderTestName"></b> — isolated from real data</span>
+      <span class="mb-exit" onclick="exitTesting()">Exit</span>
+    </div>
+    <div class="builder-head">
+      <div>
+        <h2 id="builderListName"></h2>
+        <div class="progress-chip" id="builderProgress"></div>
+      </div>
+      <div style="display:flex; gap:10px; row-gap:12px; flex-wrap:wrap;">
+        <button class="btn btn-ghost" onclick="openListSettings()" title="List Settings">&#9881; Settings</button>
+        <button class="btn btn-ghost" onclick="openRecordFeed()">Record Feed</button>
+        <button class="btn btn-ghost" onclick="openStats()">Stats Viewer</button>
+        <button class="btn btn-ghost" onclick="openLegacyList()">Legacy List</button>
+        <button class="btn btn-ghost" onclick="openPointsConfig()">Points Config</button>
+        <button class="btn btn-primary" onclick="openAddLevel()">+ Add Level</button>
+      </div>
+    </div>
+    <div id="levelList"></div>
+  </div>
+</div>
+
+<!-- VIEWER (read-only) -->
+<div class="screen" id="screen-viewer">
+  <div class="wrap">
+    <div class="back-link" onclick="showScreen('screen-dashboard')">&larr; back to dashboard</div>
+    <div class="mode-banner hidden" data-role="viewonly" id="viewerViewBanner">
+      <span>&#128065; Viewing as <b id="viewerViewName"></b> — read only</span>
+      <span class="mb-exit" onclick="exitAdminView()">Exit</span>
+    </div>
+    <div class="builder-head">
+      <div>
+        <h2 id="viewerListName"></h2>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <div class="progress-chip" id="viewerProgress"></div>
+          <div class="progress-chip" id="viewerMyPoints" style="border-color:var(--accent-2); color:var(--accent-2);"></div>
+        </div>
+      </div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <button class="btn btn-ghost" onclick="openStats()">Stats Viewer</button>
+        <button class="btn btn-ghost" onclick="openLegacyList()">Legacy List</button>
+        <button class="btn btn-primary" id="submitRecordBtn">Submit a Record</button>
+        <button class="btn btn-ghost" id="viewerUnlockBtn">Unlock to Edit</button>
+      </div>
+    </div>
+    <div id="viewerLevelList"></div>
+  </div>
+</div>
+
+<!-- SUBMIT A RECORD -->
+<div class="screen" id="screen-submit-record">
+  <div class="wrap-narrow">
+    <div class="back-link" id="submitRecordBack">&larr; back</div>
+    <h2 style="margin:14px 0 14px;" id="submitRecordTitle">Submit a Record</h2>
+    <div class="rule-box" id="submitRecordRules"></div>
+    <div class="card-panel">
+      <div class="field">
+        <label>Video link <span style="text-transform:none; letter-spacing:0;">(optional)</span></label>
+        <input type="text" id="srVideoUrl" placeholder="https://youtube.com/... or a Drive/Discord link">
+        <div style="font-size:12px; color:var(--muted); margin-top:6px;">If you have a clip, upload it to YouTube, Drive, Discord, etc. first, then paste the link here so the moderator can watch it. You can also submit without one.</div>
+      </div>
+      <div class="choice-row">
+        <div class="choice-opt active" id="srTypeVictor" onclick="setRecordType('victor')">Victor</div>
+        <div class="choice-opt" id="srTypeVerifier" onclick="setRecordType('verifier')">Verifier</div>
+      </div>
+      <div id="srVictorFields">
+        <div class="field">
+          <label>Which level did you beat?</label>
+          <select id="srLevelSelect"></select>
+        </div>
+      </div>
+      <div id="srVerifierFields" class="hidden">
+        <div class="field">
+          <label>Level name</label>
+          <input type="text" id="srLevelName" placeholder="Name of the level you verified">
+        </div>
+        <div class="field">
+          <label>Difficulty</label>
+          <select id="srDifficulty"></select>
+        </div>
+      </div>
+      <button class="btn btn-primary btn-block" onclick="submitRecord()">Submit Record</button>
+      <div class="msg" id="submitRecordMsg"></div>
+    </div>
+  </div>
+</div>
+
+<!-- RECORD FEED -->
+<div class="screen" id="screen-record-feed">
+  <div class="wrap">
+    <div class="back-link" onclick="showScreen('screen-builder'); renderBuilder();">&larr; back to builder</div>
+    <h2 style="margin:14px 0 18px;" id="feedTitle">Record Feed</h2>
+    <div id="feedList"></div>
+  </div>
+</div>
+
+<!-- STATS VIEWER -->
+<div class="screen" id="screen-stats">
+  <div class="wrap-narrow">
+    <div class="back-link" id="statsBack">&larr; back</div>
+    <h2 style="margin:14px 0 18px;" id="statsTitle">Stats Viewer</h2>
+    <input type="text" id="statsSearch" placeholder="Search players..." oninput="renderStatsList()">
+    <div id="statsList" style="margin-top:10px;"></div>
+  </div>
+</div>
+
+<!-- PLAYER STATS DETAIL -->
+<div class="screen" id="screen-player-stats">
+  <div class="wrap-narrow">
+    <div class="back-link" onclick="showScreen('screen-stats')">&larr; back to stats</div>
+    <h2 style="margin:14px 0 4px;" id="playerStatsName"></h2>
+    <div class="progress-chip" id="playerStatsPoints" style="margin-bottom:20px;"></div>
+
+    <div class="section-title">Victories</div>
+    <div id="playerVictories"></div>
+
+    <div class="section-title">Verifications</div>
+    <div id="playerVerifications"></div>
+  </div>
+</div>
+
+<!-- LEGACY LIST -->
+<div class="screen" id="screen-legacy">
+  <div class="wrap-narrow">
+    <div class="back-link" id="legacyBack">&larr; back</div>
+    <h2 style="margin:28px 0 10px; font-size:20px;" id="legacyTitle">Legacy List</h2>
+    <div style="color:var(--muted); font-size:13px; margin-bottom:28px; line-height:1.6;">Levels that were once ranked on this list before being pushed off.</div>
+    <div class="legacy-list" id="legacyListArea"></div>
+  </div>
+</div>
+
+<!-- POINTS CONFIG -->
+<div class="screen" id="screen-points-config">
+  <div class="wrap-narrow">
+    <div class="back-link" onclick="showScreen('screen-builder'); renderBuilder();">&larr; back to builder</div>
+    <h2 style="margin:28px 0 6px; font-size:20px;">Points Configuration</h2>
+    <div style="color:var(--muted); font-size:13px; margin-bottom:24px; line-height:1.6;">Choose how points are worth on this list.</div>
+
+    <div class="choice-row">
+      <div class="choice-opt active" id="pcModeLevel" onclick="setPointsConfigMode('level')">Level-Locked Points</div>
+      <div class="choice-opt" id="pcModeRank" onclick="setPointsConfigMode('rank')">Rank-Locked Points</div>
+    </div>
+
+    <div id="pcLevelNote" class="rule-box">Each level keeps its own fixed point value, set individually in the Add/Edit Level form (e.g. Bloodbath is always worth however many points you gave it, regardless of its rank).</div>
+
+    <div id="pcRankFields" class="hidden">
+      <div class="rule-box">Points are assigned by rank instead of by level. #1 is always worth whatever you set here, #2 always worth whatever you set here, and so on — if a different level takes over #1, it inherits that point value.</div>
+      <button class="btn btn-ghost btn-block" style="margin-bottom:14px;" onclick="openAutofillModal()">Autofill</button>
+      <div id="pcRankRows"></div>
+    </div>
+
+    <button class="btn btn-primary btn-block" style="margin-top:16px;" onclick="savePointsConfig()">Save Configuration</button>
+    <div class="msg" id="pcMsg"></div>
+  </div>
+</div>
+
+<!-- GENERIC CONFIRM MODAL -->
+<div class="modal-backdrop" id="confirmModal">
+  <div class="modal" style="max-width:380px;">
+    <h3 id="confirmModalTitle">Are you sure?</h3>
+    <div style="font-size:14px; color:var(--text); font-weight:600; margin-bottom:6px;" id="confirmModalMsg"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost btn-sm" onclick="closeConfirmModal()">Cancel</button>
+      <button class="btn btn-danger" id="confirmModalOk">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<!-- AUTOFILL MODAL -->
+<div class="modal-backdrop" id="autofillModal">
+  <div class="modal">
+    <h3>Autofill Rank Points</h3>
+    <div class="field">
+      <label id="autofillTopLabel">#1</label>
+      <input type="number" id="autofillTop" min="0" step="0.01" placeholder="Points for #1">
+    </div>
+    <div class="field">
+      <label id="autofillBottomLabel">#last</label>
+      <input type="number" id="autofillBottom" min="0" step="0.01" placeholder="Points for #last">
+    </div>
+    <div class="choice-row">
+      <div class="choice-opt" id="afModeLinear" onclick="setAutofillCurve('linear')">Linear</div>
+      <div class="choice-opt active" id="afModeExponential" onclick="setAutofillCurve('exponential')">Exponential (recommended)</div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost btn-sm" onclick="closeAutofillModal()">Cancel</button>
+      <button class="btn btn-primary btn-sm" onclick="applyAutofill()">Fill In Ranks</button>
+    </div>
+    <div class="msg" id="autofillMsg"></div>
+  </div>
+</div>
+
+<!-- DECLINE REASON MODAL -->
+<div class="modal-backdrop" id="declineModal">
+  <div class="modal">
+    <h3>Decline Record</h3>
+    <div class="field">
+      <label>Reason (shown to the player)</label>
+      <textarea id="declineReason" placeholder="Let them know why..."></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost btn-sm" onclick="closeDeclineModal()">Cancel</button>
+      <button class="btn btn-danger" onclick="confirmDecline()">Decline Record</button>
+    </div>
+  </div>
+</div>
+
+<!-- LIST SETTINGS MODAL -->
+<div class="modal-backdrop" id="settingsModal">
+  <div class="modal">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+      <h3 style="margin:0;">List Settings</h3>
+      <div class="icon-btn" onclick="closeListSettings()" title="Close">&#10005;</div>
+    </div>
+    <div class="field">
+      <label>List name</label>
+      <input type="text" id="stName">
+    </div>
+    <div class="field">
+      <label>How many levels on this list?</label>
+      <input type="number" id="stSize" min="1">
+    </div>
+    <div class="field">
+      <label>New list password <span style="text-transform:none; letter-spacing:0;">(leave blank to keep current)</span></label>
+      <input type="password" id="stPass" autocomplete="new-password">
+    </div>
+    <div class="field">
+      <label>Confirm new password</label>
+      <input type="password" id="stPass2" autocomplete="new-password">
+    </div>
+    <div class="field">
+      <label>Rules for record submissions</label>
+      <textarea id="stRules" placeholder="e.g. Video must show the full attempt with no cuts..."></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-danger" onclick="deleteCurrentList()">Delete List</button>
+      <button class="btn btn-primary btn-sm" onclick="submitListSettings()">Save Changes</button>
+    </div>
+    <div class="msg" id="settingsMsg"></div>
+  </div>
+</div>
+<div class="modal-backdrop" id="levelModal">
+  <div class="modal">
+    <h3 id="levelModalTitle">Add Level</h3>
+    <div class="dropzone" id="dropzone">
+      <div id="dropzoneText">Drag an image here, or click to upload</div>
+      <img id="dropzonePreview" class="hidden">
+      <input type="file" id="fileInput" accept="image/*">
+    </div>
+    <div class="field">
+      <label>Level name</label>
+      <input type="text" id="lvName">
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label>Position</label>
+        <input type="number" id="lvPosition" min="1">
+      </div>
+      <div class="field">
+        <label>&nbsp;</label>
+        <div style="font-size:12px; color:var(--muted); padding-top:8px;">out of range gets auto-fixed</div>
+      </div>
+    </div>
+    <div class="field">
+      <label>Difficulty</label>
+      <select id="lvDifficulty"></select>
+    </div>
+    <div class="field">
+      <label>Verifier</label>
+      <input type="text" id="lvVerifier" list="verifierList" autocomplete="off">
+      <datalist id="verifierList"></datalist>
+    </div>
+    <div class="field">
+      <label>Publisher</label>
+      <input type="text" id="lvPublisher">
+    </div>
+    <div class="field" id="lvPointsField">
+      <label>Points</label>
+      <input type="number" id="lvPoints" min="0" step="0.01">
+    </div>
+    <div class="msg hidden" id="lvPointsRankNote" style="margin-top:-8px; margin-bottom:14px;">This list uses rank-locked points — a level's points come from its position, set under Points Config.</div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost btn-sm" onclick="closeLevelModal()">Cancel</button>
+      <button class="btn btn-primary btn-sm" onclick="submitLevel()">Save Level</button>
+    </div>
+    <div class="msg" id="levelMsg"></div>
+  </div>
+</div>
+
+<script>
+/* ========== helpers ========== */
+function hashStr(s){
+  let h = 0;
+  for(let i=0;i<s.length;i++){ h = (h*31 + s.charCodeAt(i)) | 0; }
+  return 'h' + Math.abs(h).toString(16);
+}
+function uid(){ return 'id_' + Date.now() + '_' + Math.random().toString(36).slice(2,8); }
+function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+/* in-app confirm modal (native confirm()/alert() are blocked by the sandboxed preview) */
+function showConfirm(message, onConfirm){
+  document.getElementById('confirmModalMsg').textContent = message;
+  document.getElementById('confirmModal').classList.add('active');
+  const okBtn = document.getElementById('confirmModalOk');
+  const handler = ()=>{ closeConfirmModal(); onConfirm(); };
+  okBtn.onclick = handler;
+}
+function closeConfirmModal(){
+  document.getElementById('confirmModal').classList.remove('active');
+}
+document.getElementById('confirmModal').addEventListener('click', (e)=>{
+  if(e.target.id === 'confirmModal') closeConfirmModal();
+});
+
+const TIERS = [
+  {key:'easy',         label:'Easy',          color:'#3ddc84'},
+  {key:'normal',       label:'Normal',        color:'#4f8fff'},
+  {key:'hard',         label:'Hard',          color:'#ffb84f'},
+  {key:'harder',       label:'Harder',        color:'#ff6b4f'},
+  {key:'insane',       label:'Insane',        color:'#ff4fd8'},
+  {key:'demon-easy',   label:'Easy Demon',    color:'#b56bff'},
+  {key:'demon-medium', label:'Medium Demon',  color:'#8a3ffc'},
+  {key:'demon-hard',   label:'Hard Demon',    color:'#ff3b6e'},
+  {key:'demon-insane', label:'Insane Demon',  color:'#ff2d2d'},
+  {key:'demon-extreme',label:'Extreme Demon', color:'#ff1a1a'},
+];
+function tierByKey(k){ return TIERS.find(t=>t.key===k) || null; }
+function getLevelPoints(lv){
+  if(currentList && currentList.pointsMode === 'rank'){
+    const rp = currentList.rankPoints || {};
+    const v = rp[lv.position];
+    return typeof v === 'number' ? v : 0;
+  }
+  return typeof lv.points === 'number' ? lv.points : 0;
+}
+function computeListPoints(list){
+  const totals = {};
+  const add = (user, amt) => {
+    if(!user) return;
+    totals[user] = Math.round(((totals[user]||0) + amt) * 100) / 100;
+  };
+  (list.levels||[]).forEach(lv=>{
+    const pts = getLevelPoints(lv);
+    (lv.victors||[]).forEach(v => add(v, pts));
+    if(lv.verifier) add(lv.verifier, pts);
+  });
+  (list.legacy||[]).forEach(lv=>{
+    const pts = typeof lv.points === 'number' ? lv.points : 0; // frozen at the moment it fell off
+    (lv.victors||[]).forEach(v => add(v, pts));
+    if(lv.verifier) add(lv.verifier, pts);
+  });
+  return totals;
+}
+
+/* ========== state ========== */
+const ADMIN_USERNAME = 'fpadmin22';
+const ADMIN_PASSWORD = 'camryankaan';
+let currentUser = null;
+let isAdmin = false;
+let adminViewOnly = false;
+let adminOriginalUser = null;
+let testingMode = false;
+let currentList = null;
+let unlockedListIds = new Set();
+let pendingListId = null;
+let editingLevelId = null;
+let pendingImage = null;
+let fulfillingRecordId = null;
+let pendingDeclineRecordId = null;
+
+/* ========== screens ========== */
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0, 0);
+}
+
+/* ========== storage keys (isolated when in the admin testing sandbox) ========== */
+function accountsKey(){ return testingMode ? 'fp-test-accounts' : 'fp-accounts'; }
+function listsIndexKey(){ return testingMode ? 'fp-test-lists-index' : 'fp-lists-index'; }
+function listDetailKey(id){ return (testingMode ? 'fp-test-list-' : 'fp-list-') + id; }
+
+/* ========== accounts (shared storage) ========== */
+async function loadAccounts(){
+  try{
+    const res = await window.storage.get(accountsKey(), true);
+    return res && res.value ? JSON.parse(res.value) : {};
+  }catch(e){ return {}; }
+}
+async function saveAccounts(accounts){
+  try{ await window.storage.set(accountsKey(), JSON.stringify(accounts), true); }catch(e){}
+}
+
+let authMode = 'signup';
+function goAuth(mode){
+  authMode = mode;
+  document.getElementById('tab-signup').classList.toggle('active', mode==='signup');
+  document.getElementById('tab-login').classList.toggle('active', mode==='login');
+  document.getElementById('authSubmit').textContent = mode==='signup' ? 'Create Account' : 'Log In';
+  document.getElementById('authMsg').textContent = '';
+  document.getElementById('authMsg').className = 'msg';
+  document.getElementById('authModal').classList.add('active');
+}
+function closeAuthModal(){
+  document.getElementById('authModal').classList.remove('active');
+}
+document.getElementById('authModal').addEventListener('click', (e)=>{
+  if(e.target.id === 'authModal') closeAuthModal();
+});
+document.getElementById('authSubmit').addEventListener('click', async ()=>{
+  const username = document.getElementById('authUsername').value.trim();
+  const password = document.getElementById('authPassword').value;
+  const msgEl = document.getElementById('authMsg');
+  if(!username || !password){
+    msgEl.textContent = 'Enter a username and password.'; msgEl.className='msg error'; return;
+  }
+
+  if(username.toLowerCase() === ADMIN_USERNAME){
+    if(authMode === 'signup'){
+      msgEl.textContent = 'This username is reserved.'; msgEl.className='msg error'; return;
+    }
+    if(password !== ADMIN_PASSWORD){
+      msgEl.textContent = 'Incorrect username or password.'; msgEl.className='msg error'; return;
+    }
+    currentUser = ADMIN_USERNAME;
+    isAdmin = true;
+    await saveSession();
+    closeAuthModal();
+    enterAdminDashboard();
+    return;
+  }
+
+  const accounts = await loadAccounts();
+  if(authMode === 'signup'){
+    if(accounts[username]){
+      msgEl.textContent = 'That username is already taken.'; msgEl.className='msg error'; return;
+    }
+    accounts[username] = { hash: hashStr(password), createdAt: Date.now() };
+    await saveAccounts(accounts);
+    currentUser = username;
+    isAdmin = false;
+    await saveSession();
+    closeAuthModal();
+    enterDashboard();
+  }else{
+    const acct = accounts[username];
+    if(!acct || acct.hash !== hashStr(password)){
+      msgEl.textContent = 'Incorrect username or password.'; msgEl.className='msg error'; return;
+    }
+    currentUser = username;
+    isAdmin = false;
+    await saveSession();
+    closeAuthModal();
+    enterDashboard();
+  }
+});
+
+/* session (personal storage, remembers login on this device) */
+async function saveSession(){
+  try{ await window.storage.set('fp-session', JSON.stringify({username: currentUser, isAdmin}), false); }catch(e){}
+}
+async function loadSession(){
+  try{
+    const res = await window.storage.get('fp-session', false);
+    if(res && res.value){
+      const s = JSON.parse(res.value);
+      if(s.username) return s;
+    }
+  }catch(e){}
+  return null;
+}
+async function logOut(){
+  currentUser = null;
+  isAdmin = false;
+  adminViewOnly = false;
+  testingMode = false;
+  adminOriginalUser = null;
+  try{ await window.storage.delete('fp-session', false); }catch(e){}
+  showScreen('screen-home');
+}
+
+/* ========== lists index (shared storage) ========== */
+async function loadListsIndex(){
+  try{
+    const res = await window.storage.get(listsIndexKey(), true);
+    return res && res.value ? JSON.parse(res.value) : [];
+  }catch(e){ return []; }
+}
+async function saveListsIndex(idx){
+  try{ await window.storage.set(listsIndexKey(), JSON.stringify(idx), true); }catch(e){}
+}
+async function loadListDetail(id){
+  try{
+    const res = await window.storage.get(listDetailKey(id), true);
+    if(!res || !res.value) return null;
+    const list = JSON.parse(res.value);
+    if(!list.rules) list.rules = '';
+    if(!list.records) list.records = [];
+    if(!list.points) list.points = {};
+    if(!list.legacy) list.legacy = [];
+    if(!list.pointsMode) list.pointsMode = 'level';
+    if(!list.rankPoints) list.rankPoints = {};
+    list.levels.forEach(lv => {
+      if(!lv.victors) lv.victors = [];
+      if(typeof lv.bestRank !== 'number') lv.bestRank = lv.position;
+    });
+    return list;
+  }catch(e){ return null; }
+}
+async function saveListDetail(list){
+  try{ await window.storage.set(listDetailKey(list.id), JSON.stringify(list), true); }catch(e){}
+}
+
+/* ========== admin dashboard ========== */
+let adminTab = 'accounts';
+function enterAdminDashboard(){
+  adminTab = 'accounts';
+  setAdminTab('accounts');
+  showScreen('screen-admin');
+}
+function setAdminTab(tab){
+  adminTab = tab;
+  document.getElementById('adminTabAccounts').classList.toggle('active', tab==='accounts');
+  document.getElementById('adminTabTesting').classList.toggle('active', tab==='testing');
+  document.getElementById('adminAccountsPanel').classList.toggle('hidden', tab!=='accounts');
+  document.getElementById('adminTestingPanel').classList.toggle('hidden', tab!=='testing');
+  if(tab==='accounts') renderAdminAccounts();
+  else renderAdminTesters();
+}
+
+async function renderAdminAccounts(){
+  testingMode = false; // account management always looks at the real accounts store
+  const accounts = await loadAccounts();
+  const searchTerm = (document.getElementById('adminAcctSearch').value || '').trim().toLowerCase();
+  const names = Object.keys(accounts).filter(u => !searchTerm || u.toLowerCase().includes(searchTerm)).sort();
+  const wrap = document.getElementById('adminAcctList');
+  wrap.innerHTML = '';
+  if(names.length === 0){
+    wrap.innerHTML = '<div class="empty-note">No matching accounts.</div>';
+    return;
+  }
+  names.forEach(name=>{
+    const row = document.createElement('div');
+    row.className = 'acct-row';
+    row.innerHTML = `
+      <input type="checkbox" data-acct="${escapeHtml(name)}">
+      <span class="acct-name">${escapeHtml(name)}</span>
+      <button class="btn btn-ghost btn-sm" data-viewas="${escapeHtml(name)}">View As</button>
+    `;
+    wrap.appendChild(row);
+  });
+  wrap.querySelectorAll('[data-viewas]').forEach(btn=>{
+    btn.addEventListener('click', ()=> adminViewAs(btn.dataset.viewas));
+  });
+}
+async function deleteSelectedAccounts(){
+  const checked = Array.from(document.querySelectorAll('#adminAcctList input[type=checkbox]:checked')).map(c=>c.dataset.acct);
+  if(checked.length === 0) return;
+  showConfirm('Delete ' + checked.length + ' account(s) permanently? This can\'t be undone.', async ()=>{
+    testingMode = false;
+    const accounts = await loadAccounts();
+    checked.forEach(name => delete accounts[name]);
+    await saveAccounts(accounts);
+    renderAdminAccounts();
+  });
+}
+function adminViewAs(username){
+  adminOriginalUser = currentUser;
+  adminViewOnly = true;
+  testingMode = false;
+  currentUser = username;
+  enterDashboard();
+}
+function exitAdminView(){
+  currentUser = adminOriginalUser || ADMIN_USERNAME;
+  adminOriginalUser = null;
+  adminViewOnly = false;
+  enterAdminDashboard();
+}
+
+/* ---- testing sandbox ---- */
+async function renderAdminTesters(){
+  testingMode = true;
+  const testers = await loadAccounts();
+  testingMode = false;
+  document.getElementById('testerMsg').textContent = '';
+  const wrap = document.getElementById('adminTesterList');
+  wrap.innerHTML = '';
+  const names = Object.keys(testers).sort();
+  if(names.length === 0){
+    wrap.innerHTML = '<div class="empty-note">No testing accounts yet.</div>';
+    return;
+  }
+  names.forEach(name=>{
+    const row = document.createElement('div');
+    row.className = 'tester-row';
+    row.innerHTML = `
+      <input type="text" value="${escapeHtml(name)}" data-rename="${escapeHtml(name)}">
+      <button class="btn btn-ghost btn-sm" data-save="${escapeHtml(name)}">Save Name</button>
+      <button class="btn btn-primary btn-sm" data-enter="${escapeHtml(name)}">Enter</button>
+      <button class="btn btn-danger" data-remove="${escapeHtml(name)}">Delete</button>
+    `;
+    wrap.appendChild(row);
+  });
+  wrap.querySelectorAll('[data-save]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const input = wrap.querySelector(`[data-rename="${CSS.escape(btn.dataset.save)}"]`);
+      renameTesterAccount(btn.dataset.save, input.value.trim());
+    });
+  });
+  wrap.querySelectorAll('[data-enter]').forEach(btn=>{
+    btn.addEventListener('click', ()=> enterTestingAsTester(btn.dataset.enter));
+  });
+  wrap.querySelectorAll('[data-remove]').forEach(btn=>{
+    btn.addEventListener('click', ()=> deleteTesterAccount(btn.dataset.remove));
+  });
+}
+async function createTesterAccount(){
+  testingMode = true;
+  const testers = await loadAccounts();
+  let n = 1;
+  while(testers['Tester' + n]) n++;
+  const name = 'Tester' + n;
+  testers[name] = { hash: null, createdAt: Date.now() };
+  await saveAccounts(testers);
+  testingMode = false;
+  renderAdminTesters();
+}
+async function renameTesterAccount(oldName, newName){
+  if(!newName || newName === oldName) return;
+  testingMode = true;
+  const testers = await loadAccounts();
+  if(testers[newName]){
+    testingMode = false;
+    await renderAdminTesters();
+    document.getElementById('testerMsg').textContent = 'A tester with that name already exists.';
+    document.getElementById('testerMsg').className = 'msg error';
+    return;
+  }
+  testers[newName] = testers[oldName];
+  delete testers[oldName];
+  await saveAccounts(testers);
+  testingMode = false;
+  renderAdminTesters();
+}
+async function deleteTesterAccount(name){
+  showConfirm('Delete testing account "' + name + '"? This can\'t be undone.', async ()=>{
+    testingMode = true;
+    const testers = await loadAccounts();
+    delete testers[name];
+    await saveAccounts(testers);
+    testingMode = false;
+    renderAdminTesters();
+  });
+}
+function enterTestingAsTester(name){
+  adminOriginalUser = currentUser;
+  testingMode = true;
+  adminViewOnly = false;
+  currentUser = name;
+  enterDashboard();
+}
+function exitTesting(){
+  currentUser = adminOriginalUser || ADMIN_USERNAME;
+  adminOriginalUser = null;
+  testingMode = false;
+  enterAdminDashboard();
+}
+
+/* ========== dashboard ========== */
+async function enterDashboard(){
+  document.getElementById('dashUsername').textContent = currentUser;
+  document.getElementById('dashViewName').textContent = currentUser;
+  document.getElementById('dashTestName').textContent = currentUser;
+  document.querySelector('#screen-dashboard [data-role="viewonly"]').classList.toggle('hidden', !adminViewOnly);
+  document.querySelector('#screen-dashboard [data-role="testing"]').classList.toggle('hidden', !testingMode);
+  document.getElementById('buildListBtn').classList.toggle('hidden', adminViewOnly);
+  showScreen('screen-dashboard');
+  await renderDashboardLists();
+}
+async function renderDashboardLists(){
+  const idx = await loadListsIndex();
+  const mine = idx.filter(l => l.owner === currentUser);
+  const searchTerm = (document.getElementById('listSearch').value || '').trim().toLowerCase();
+  const others = idx.filter(l => l.owner !== currentUser &&
+    (!searchTerm || l.name.toLowerCase().includes(searchTerm) || l.owner.toLowerCase().includes(searchTerm)));
+
+  const myEl = document.getElementById('myLists');
+  myEl.innerHTML = mine.length ? '' : '<div class="empty-note">You haven\'t built a list yet.</div>';
+  mine.forEach(l => myEl.appendChild(renderListRow(l, true)));
+
+  const allEl = document.getElementById('allLists');
+  allEl.innerHTML = others.length ? '' : '<div class="empty-note">No matching lists found.</div>';
+  others.forEach(l => allEl.appendChild(renderListRow(l, false)));
+}
+function renderListRow(l, isMine){
+  const row = document.createElement('div');
+  row.className = 'list-row';
+  row.innerHTML = `
+    <div>
+      <div class="lname">${escapeHtml(l.name)}</div>
+      <div class="lmeta">by ${escapeHtml(l.owner)} &middot; ${l.levelCount || 0} / ${l.targetSize} levels</div>
+    </div>
+    <div class="icon-btn">&rarr;</div>
+  `;
+  row.addEventListener('click', ()=> (isMine && !adminViewOnly) ? goUnlock(l.id, l.name) : openViewer(l.id));
+  return row;
+}
+
+/* ========== create list ========== */
+function openCreateList(){
+  document.getElementById('newListName').value = '';
+  document.getElementById('newListSize').value = 25;
+  document.getElementById('newListPass').value = '';
+  document.getElementById('newListPass2').value = '';
+  document.getElementById('newListRules').value = '';
+  document.getElementById('createMsg').textContent = '';
+  showScreen('screen-create');
+}
+async function submitCreateList(){
+  const name = document.getElementById('newListName').value.trim();
+  const size = parseInt(document.getElementById('newListSize').value, 10);
+  const pass = document.getElementById('newListPass').value;
+  const pass2 = document.getElementById('newListPass2').value;
+  const msgEl = document.getElementById('createMsg');
+
+  if(!name){ msgEl.textContent = 'Give your list a name.'; msgEl.className='msg error'; return; }
+  if(!size || size < 1){ msgEl.textContent = 'Choose at least 1 level.'; msgEl.className='msg error'; return; }
+  if(!pass || pass.length < 3){ msgEl.textContent = 'List password must be at least 3 characters.'; msgEl.className='msg error'; return; }
+  if(pass !== pass2){ msgEl.textContent = 'Passwords don\'t match.'; msgEl.className='msg error'; return; }
+
+  const id = uid();
+  const rules = document.getElementById('newListRules').value.trim();
+  const list = {
+    id, name, owner: currentUser, passwordHash: hashStr(pass),
+    targetSize: size, levels: [], rules, records: [], points: {}, legacy: [],
+    pointsMode: 'level', rankPoints: {}, createdAt: Date.now()
+  };
+  await saveListDetail(list);
+
+  const idx = await loadListsIndex();
+  idx.push({ id, name, owner: currentUser, targetSize: size, levelCount: 0 });
+  await saveListsIndex(idx);
+
+  currentList = list;
+  unlockedListIds.add(id);
+  enterBuilder();
+}
+
+/* ========== unlock list ========== */
+function goUnlock(id, name){
+  pendingListId = id;
+  document.getElementById('unlockTitle').textContent = 'Unlock "' + name + '"';
+  document.getElementById('unlockPass').value = '';
+  document.getElementById('unlockMsg').textContent = '';
+  showScreen('screen-unlock');
+}
+async function submitUnlock(){
+  const pass = document.getElementById('unlockPass').value;
+  const msgEl = document.getElementById('unlockMsg');
+  const list = await loadListDetail(pendingListId);
+  if(!list){ msgEl.textContent = 'List not found.'; msgEl.className='msg error'; return; }
+  if(list.passwordHash !== hashStr(pass)){
+    msgEl.textContent = 'Incorrect list password.'; msgEl.className='msg error'; return;
+  }
+  currentList = list;
+  unlockedListIds.add(list.id);
+  enterBuilder();
+}
+
+/* ========== builder ========== */
+function enterBuilder(){
+  showScreen('screen-builder');
+  renderBuilder();
+}
+function renderBuilder(){
+  document.getElementById('builderListName').textContent = currentList.name;
+  document.getElementById('builderProgress').textContent =
+    currentList.levels.length + ' / ' + currentList.targetSize + ' levels';
+  document.getElementById('builderTestBanner').classList.toggle('hidden', !testingMode);
+  document.getElementById('builderTestName').textContent = currentUser;
+
+  const wrap = document.getElementById('levelList');
+  wrap.innerHTML = '';
+  if(currentList.levels.length === 0){
+    wrap.innerHTML = '<div class="empty-note">No levels yet. Add your first one.</div>';
+    return;
+  }
+  const sorted = [...currentList.levels].sort((a,b)=>a.position-b.position);
+  sorted.forEach((lv, i) => {
+    const card = document.createElement('div');
+    card.className = 'level-card';
+    card.draggable = true;
+    card.dataset.id = lv.id;
+    const t = tierByKey(lv.difficulty);
+    card.innerHTML = `
+      <div class="pos-badge"><span>${i+1}</span></div>
+      ${lv.image ? `<img class="lv-thumb" src="${lv.image}">` : `<div class="lv-thumb"></div>`}
+      <div class="lv-info">
+        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+          <span class="lv-name">${escapeHtml(lv.name)}</span>
+          ${t ? `<span class="tier-tag" style="--tier:${t.color}">${t.label}</span>` : ''}
+          <span class="victor-count">${(lv.victors||[]).length} victor${(lv.victors||[]).length===1?'':'s'}</span>
+        </div>
+        <div class="lv-meta">Verified by ${escapeHtml(lv.verifier || '—')} &middot; Published by ${escapeHtml(lv.publisher || '—')} &middot; ${getLevelPoints(lv).toFixed(2)} pts</div>
+      </div>
+      <div class="lv-actions">
+        <div class="icon-btn" data-edit="${lv.id}" title="Edit">&#9998;</div>
+        <div class="icon-btn btn-danger" data-del="${lv.id}" title="Delete">&#10005;</div>
+      </div>
+    `;
+    wrap.appendChild(card);
+  });
+
+  wrap.querySelectorAll('[data-edit]').forEach(el=>{
+    el.addEventListener('click', (e)=>{ e.stopPropagation(); openAddLevel(el.dataset.edit); });
+  });
+  wrap.querySelectorAll('[data-del]').forEach(el=>{
+    el.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      const lv = currentList.levels.find(x=>x.id===el.dataset.del);
+      showConfirm('Remove "' + (lv ? lv.name : 'this level') + '" from the list? This can\'t be undone.', async ()=>{
+        currentList.levels = currentList.levels.filter(x=>x.id!==el.dataset.del);
+        reindexPositions();
+        await saveListAndSync();
+        renderBuilder();
+      });
+    });
+  });
+
+  let dragSrcId = null;
+  wrap.querySelectorAll('.level-card').forEach(card=>{
+    card.addEventListener('dragstart', ()=>{ dragSrcId = card.dataset.id; card.classList.add('dragging'); });
+    card.addEventListener('dragend', ()=>{
+      card.classList.remove('dragging');
+      wrap.querySelectorAll('.level-card').forEach(c=>c.classList.remove('drag-over'));
+    });
+    card.addEventListener('dragover', (e)=>{ e.preventDefault(); card.classList.add('drag-over'); });
+    card.addEventListener('dragleave', ()=> card.classList.remove('drag-over'));
+    card.addEventListener('drop', async (e)=>{
+      e.preventDefault();
+      const targetId = card.dataset.id;
+      if(!dragSrcId || dragSrcId === targetId) return;
+      const list = [...currentList.levels].sort((a,b)=>a.position-b.position);
+      const fromIdx = list.findIndex(l=>l.id===dragSrcId);
+      const toIdx = list.findIndex(l=>l.id===targetId);
+      const [moved] = list.splice(fromIdx,1);
+      list.splice(toIdx,0,moved);
+      currentList.levels = list;
+      reindexPositions();
+      dragSrcId = null;
+      await saveListAndSync();
+      renderBuilder();
+    });
+  });
+}
+function reindexPositions(){
+  const sorted = [...currentList.levels].sort((a,b)=>a.position-b.position);
+  sorted.forEach((lv,i)=>{
+    lv.position = i+1;
+    if(typeof lv.bestRank !== 'number' || lv.position < lv.bestRank) lv.bestRank = lv.position;
+  });
+  currentList.levels = sorted;
+}
+async function saveListAndSync(){
+  await saveListDetail(currentList);
+  const idx = await loadListsIndex();
+  const entry = idx.find(l=>l.id===currentList.id);
+  if(entry) entry.levelCount = currentList.levels.length;
+  await saveListsIndex(idx);
+}
+
+/* ========== read-only viewer ========== */
+async function openViewer(id){
+  const list = await loadListDetail(id);
+  if(!list) return;
+  currentList = list;
+  showScreen('screen-viewer');
+  const viewBanner = document.getElementById('viewerViewBanner');
+  viewBanner.classList.toggle('hidden', !adminViewOnly);
+  document.getElementById('viewerViewName').textContent = currentUser;
+  document.getElementById('viewerListName').textContent = list.name + ' (view only)';
+  const completedCount = list.levels.filter(lv => (lv.victors||[]).includes(currentUser)).length;
+  document.getElementById('viewerProgress').textContent = completedCount + ' / ' + list.levels.length + ' levels completed';
+  const myPtsEl = document.getElementById('viewerMyPoints');
+  if(currentUser === list.owner || adminViewOnly){
+    myPtsEl.classList.add('hidden');
+  }else{
+    myPtsEl.classList.remove('hidden');
+    myPtsEl.textContent = 'Your points: ' + ((computeListPoints(list))[currentUser] || 0).toFixed(2);
+  }
+  const unlockBtn = document.getElementById('viewerUnlockBtn');
+  unlockBtn.classList.toggle('hidden', adminViewOnly);
+  unlockBtn.onclick = ()=> goUnlock(list.id, list.name);
+  const submitBtn = document.getElementById('submitRecordBtn');
+  if(currentUser === list.owner || adminViewOnly){
+    submitBtn.classList.add('hidden');
+  }else{
+    submitBtn.classList.remove('hidden');
+    submitBtn.onclick = ()=> openSubmitRecord(list.id);
+  }
+
+  const wrap = document.getElementById('viewerLevelList');
+  wrap.innerHTML = '';
+  if(list.levels.length === 0){
+    wrap.innerHTML = '<div class="empty-note">This list has no levels yet.</div>';
+    return;
+  }
+  const sorted = [...list.levels].sort((a,b)=>a.position-b.position);
+  sorted.forEach((lv, i) => {
+    const card = document.createElement('div');
+    card.className = 'level-card';
+    card.style.cursor = 'default';
+    const t = tierByKey(lv.difficulty);
+    card.innerHTML = `
+      <div class="pos-badge"><span>${i+1}</span></div>
+      ${lv.image ? `<img class="lv-thumb" src="${lv.image}">` : `<div class="lv-thumb"></div>`}
+      <div class="lv-info">
+        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+          <span class="lv-name">${escapeHtml(lv.name)}</span>
+          ${t ? `<span class="tier-tag" style="--tier:${t.color}">${t.label}</span>` : ''}
+          <span class="victor-count">${(lv.victors||[]).length} victor${(lv.victors||[]).length===1?'':'s'}</span>
+        </div>
+        <div class="lv-meta">Verified by ${escapeHtml(lv.verifier || '—')} &middot; Published by ${escapeHtml(lv.publisher || '—')} &middot; ${getLevelPoints(lv).toFixed(2)} pts</div>
+      </div>
+    `;
+    wrap.appendChild(card);
+  });
+}
+
+/* ========== submit a record ========== */
+let recordType = 'victor';
+let submitRecordListId = null;
+let statsReturnScreen = 'screen-dashboard';
+let legacyReturnScreen = 'screen-dashboard';
+
+function setRecordType(type){
+  recordType = type;
+  document.getElementById('srTypeVictor').classList.toggle('active', type==='victor');
+  document.getElementById('srTypeVerifier').classList.toggle('active', type==='verifier');
+  document.getElementById('srVictorFields').classList.toggle('hidden', type!=='victor');
+  document.getElementById('srVerifierFields').classList.toggle('hidden', type!=='verifier');
+}
+
+async function openSubmitRecord(listId){
+  submitRecordListId = listId;
+  const list = await loadListDetail(listId);
+  if(!list) return;
+  document.getElementById('submitRecordTitle').textContent = 'Submit a Record — ' + list.name;
+  document.getElementById('submitRecordRules').textContent = list.rules || '';
+  document.getElementById('submitRecordBack').onclick = ()=> openViewer(listId);
+  document.getElementById('submitRecordMsg').textContent = '';
+  document.getElementById('srVideoUrl').value = '';
+  document.getElementById('srLevelName').value = '';
+  setRecordType('victor');
+
+  const sorted = [...list.levels].sort((a,b)=>a.position-b.position);
+  const levelSel = document.getElementById('srLevelSelect');
+  levelSel.innerHTML = sorted.length
+    ? sorted.map(lv=>`<option value="${lv.id}">#${lv.position} — ${escapeHtml(lv.name)}</option>`).join('')
+    : '<option value="">No levels on this list yet</option>';
+
+  const diffSel = document.getElementById('srDifficulty');
+  diffSel.innerHTML = '<option value="">Select difficulty</option>' +
+    TIERS.map(t=>`<option value="${t.key}">${t.label}</option>`).join('');
+
+  showScreen('screen-submit-record');
+}
+
+async function submitRecord(){
+  const msgEl = document.getElementById('submitRecordMsg');
+  const videoUrl = document.getElementById('srVideoUrl').value.trim();
+  if(videoUrl && !/^https?:\/\//i.test(videoUrl)){ msgEl.textContent = 'Video link must start with http:// or https://'; msgEl.className='msg error'; return; }
+
+  const list = await loadListDetail(submitRecordListId);
+  if(!list){ msgEl.textContent = 'List not found.'; msgEl.className='msg error'; return; }
+
+  const record = {
+    id: uid(), submittedBy: currentUser, type: recordType,
+    videoUrl, status: 'pending', createdAt: Date.now()
+  };
+
+  if(recordType === 'victor'){
+    const levelId = document.getElementById('srLevelSelect').value;
+    if(!levelId){ msgEl.textContent = 'Choose which level you beat.'; msgEl.className='msg error'; return; }
+    const lv = list.levels.find(l=>l.id===levelId);
+    record.levelId = levelId;
+    record.levelName = lv ? lv.name : '';
+  }else{
+    const levelName = document.getElementById('srLevelName').value.trim();
+    const difficulty = document.getElementById('srDifficulty').value;
+    if(!levelName){ msgEl.textContent = 'Enter the name of the level you verified.'; msgEl.className='msg error'; return; }
+    if(!difficulty){ msgEl.textContent = 'Choose a difficulty.'; msgEl.className='msg error'; return; }
+    record.levelName = levelName;
+    record.difficulty = difficulty;
+  }
+
+  list.records.push(record);
+  await saveListDetail(list);
+  msgEl.textContent = 'Record submitted! The list moderator will review it.';
+  msgEl.className = 'msg ok';
+  setTimeout(()=> openViewer(submitRecordListId), 1200);
+}
+
+/* ========== record feed (moderator) ========== */
+function openRecordFeed(){
+  showScreen('screen-record-feed');
+  renderRecordFeed();
+}
+function renderRecordFeed(){
+  document.getElementById('feedTitle').textContent = 'Record Feed — ' + currentList.name;
+  const wrap = document.getElementById('feedList');
+  wrap.innerHTML = '';
+  const records = [...currentList.records].sort((a,b)=>b.createdAt-a.createdAt);
+  if(records.length === 0){
+    wrap.innerHTML = '<div class="empty-note">No records submitted yet.</div>';
+    return;
+  }
+  records.forEach(r=>{
+    const t = r.difficulty ? tierByKey(r.difficulty) : null;
+    const card = document.createElement('div');
+    card.className = 'record-card';
+    card.innerHTML = `
+      <div class="record-top">
+        <div>
+          <span class="who">${escapeHtml(r.submittedBy)}</span>
+          <span class="type-tag ${r.type}">${r.type}</span>
+        </div>
+        <span class="status-tag ${r.status}">${r.status}</span>
+      </div>
+      <div class="record-meta">
+        Level: ${escapeHtml(r.levelName || '—')} ${t ? '&middot; ' + t.label : ''} &middot; ${r.videoUrl ? `<a href="${escapeHtml(r.videoUrl)}" target="_blank" rel="noopener" style="color:var(--accent-2);">Watch clip &#8599;</a>` : '<span style="color:var(--muted);">No video submitted</span>'}
+      </div>
+      ${r.status==='declined' && r.declineReason ? `<div class="decline-reason">Declined: ${escapeHtml(r.declineReason)}</div>` : ''}
+      ${r.status==='pending' ? `
+        <div class="record-actions">
+          <button class="btn btn-primary btn-sm" data-accept="${r.id}">Accept</button>
+          <button class="btn btn-danger" data-decline="${r.id}">Decline</button>
+        </div>` : ''}
+    `;
+    wrap.appendChild(card);
+  });
+  wrap.querySelectorAll('[data-accept]').forEach(el=>{
+    el.addEventListener('click', ()=> acceptRecord(el.dataset.accept));
+  });
+  wrap.querySelectorAll('[data-decline]').forEach(el=>{
+    el.addEventListener('click', ()=> openDeclineModal(el.dataset.decline));
+  });
+}
+async function acceptRecord(recordId){
+  const record = currentList.records.find(r=>r.id===recordId);
+  if(!record) return;
+
+  if(record.type === 'victor'){
+    const lv = currentList.levels.find(l=>l.id===record.levelId);
+    if(lv){
+      if(!lv.victors) lv.victors = [];
+      if(!lv.victors.includes(record.submittedBy)) lv.victors.push(record.submittedBy);
+    }
+    record.status = 'accepted';
+    await saveListAndSync();
+    renderBuilder();
+    renderRecordFeed();
+  }else{
+    // verifier record: moderator must manually add the level. Points are awarded once the level is saved.
+    fulfillingRecordId = record.id;
+    openAddLevel(null, { name: record.levelName, verifier: record.submittedBy, difficulty: record.difficulty });
+  }
+}
+function openDeclineModal(recordId){
+  pendingDeclineRecordId = recordId;
+  document.getElementById('declineReason').value = '';
+  document.getElementById('declineModal').classList.add('active');
+}
+function closeDeclineModal(){
+  document.getElementById('declineModal').classList.remove('active');
+}
+document.getElementById('declineModal').addEventListener('click', (e)=>{
+  if(e.target.id === 'declineModal') closeDeclineModal();
+});
+async function confirmDecline(){
+  const record = currentList.records.find(r=>r.id===pendingDeclineRecordId);
+  if(record){
+    record.status = 'declined';
+    record.declineReason = document.getElementById('declineReason').value.trim();
+    await saveListAndSync();
+  }
+  closeDeclineModal();
+  renderRecordFeed();
+}
+
+/* ========== stats viewer ========== */
+function openStats(){
+  statsReturnScreen = document.querySelector('.screen.active').id;
+  document.getElementById('statsBack').onclick = ()=> showScreen(statsReturnScreen);
+  document.getElementById('statsTitle').textContent = 'Stats Viewer — ' + currentList.name;
+  document.getElementById('statsSearch').value = '';
+  renderStatsList();
+  showScreen('screen-stats');
+}
+function renderStatsList(){
+  const searchTerm = (document.getElementById('statsSearch').value || '').trim().toLowerCase();
+  const wrap = document.getElementById('statsList');
+  wrap.innerHTML = '';
+  const fullRanked = Object.entries(computeListPoints(currentList)).sort((a,b)=>b[1]-a[1]);
+  const entries = fullRanked
+    .map(([user, pts], i) => [user, pts, i+1])
+    .filter(([user]) => !searchTerm || user.toLowerCase().includes(searchTerm));
+  if(entries.length === 0){
+    wrap.innerHTML = '<div class="empty-note">No matching players.</div>';
+  }else{
+    entries.forEach(([user, pts, rank])=>{
+      const row = document.createElement('div');
+      row.className = 'points-row';
+      row.style.cursor = 'pointer';
+      row.innerHTML = `<span class="pname"><span class="lg-rank" style="margin-right:8px;">#${rank}</span>${escapeHtml(user)}</span><span class="pval">${pts.toFixed(2)} pts</span>`;
+      row.addEventListener('click', ()=> openPlayerStats(user));
+      wrap.appendChild(row);
+    });
+  }
+}
+function openPlayerStats(username){
+  document.getElementById('playerStatsName').textContent = username;
+  document.getElementById('playerStatsPoints').textContent =
+    (computeListPoints(currentList)[username] || 0).toFixed(2) + ' pts on this list';
+
+  const victoryLevels = currentList.levels.filter(lv => (lv.victors||[]).includes(username));
+  const verifiedLevels = currentList.levels.filter(lv => lv.verifier === username);
+
+  const renderGroup = (levels) => {
+    if(levels.length === 0) return '<div class="empty-note">None yet.</div>';
+    return [...levels].sort((a,b)=>a.position-b.position).map(lv=>{
+      const t = tierByKey(lv.difficulty);
+      return `<div class="record-card">
+        <div class="record-top">
+          <span class="who">#${lv.position} ${escapeHtml(lv.name)}</span>
+          ${t ? `<span class="tier-tag" style="--tier:${t.color}">${t.label}</span>` : ''}
+        </div>
+        <div class="record-meta">${getLevelPoints(lv).toFixed(2)} pts</div>
+      </div>`;
+    }).join('');
+  };
+
+  document.getElementById('playerVictories').innerHTML = renderGroup(victoryLevels);
+  document.getElementById('playerVerifications').innerHTML = renderGroup(verifiedLevels);
+  showScreen('screen-player-stats');
+}
+
+/* ========== legacy list ========== */
+function openLegacyList(){
+  legacyReturnScreen = document.querySelector('.screen.active').id;
+  document.getElementById('legacyBack').onclick = ()=> showScreen(legacyReturnScreen);
+  document.getElementById('legacyTitle').textContent = 'Legacy List — ' + currentList.name;
+
+  const wrap = document.getElementById('legacyListArea');
+  wrap.innerHTML = '';
+  const sorted = [...currentList.legacy].sort((a,b)=>a.bestRank-b.bestRank);
+  if(sorted.length === 0){
+    wrap.innerHTML = '<div class="empty-note">No levels have fallen off this list yet.</div>';
+  }else{
+    sorted.forEach((lv, i)=>{
+      const t = tierByKey(lv.difficulty);
+      const row = document.createElement('div');
+      row.className = 'legacy-row';
+      row.innerHTML = `
+        <div class="lg-left">
+          <span class="lg-name">${escapeHtml(lv.name)}</span>
+          <span class="lg-sub">Highest rank reached: #${lv.bestRank} ${t ? '&middot; ' + t.label : ''} &middot; Pushed off by: ${escapeHtml(lv.pushedOffBy || '—')}</span>
+        </div>
+        <span class="lg-rank">#${i+1}</span>
+      `;
+      wrap.appendChild(row);
+    });
+  }
+  showScreen('screen-legacy');
+}
+
+/* ========== points configuration ========== */
+let pendingPointsMode = 'level';
+function openPointsConfig(){
+  pendingPointsMode = currentList.pointsMode || 'level';
+  document.getElementById('pcModeLevel').classList.toggle('active', pendingPointsMode==='level');
+  document.getElementById('pcModeRank').classList.toggle('active', pendingPointsMode==='rank');
+  document.getElementById('pcLevelNote').classList.toggle('hidden', pendingPointsMode!=='level');
+  document.getElementById('pcRankFields').classList.toggle('hidden', pendingPointsMode!=='rank');
+  document.getElementById('pcMsg').textContent = '';
+
+  const rows = document.getElementById('pcRankRows');
+  rows.innerHTML = '';
+  for(let i=1; i<=currentList.targetSize; i++){
+    const existing = (currentList.rankPoints || {})[i];
+    const row = document.createElement('div');
+    row.className = 'pc-rank-row';
+    row.innerHTML = `<span class="pc-label">#${i}</span>
+      <input type="number" min="0" step="0.01" data-rank="${i}" value="${typeof existing==='number' ? existing.toFixed(2) : '0.00'}">`;
+    rows.appendChild(row);
+  }
+  showScreen('screen-points-config');
+}
+function setPointsConfigMode(mode){
+  pendingPointsMode = mode;
+  document.getElementById('pcModeLevel').classList.toggle('active', mode==='level');
+  document.getElementById('pcModeRank').classList.toggle('active', mode==='rank');
+  document.getElementById('pcLevelNote').classList.toggle('hidden', mode!=='level');
+  document.getElementById('pcRankFields').classList.toggle('hidden', mode!=='rank');
+}
+/* ---- autofill rank points ---- */
+let autofillCurve = 'exponential';
+function openAutofillModal(){
+  const n = currentList.targetSize;
+  const topLevel = currentList.levels.find(lv=>lv.position===1);
+  const bottomLevel = currentList.levels.find(lv=>lv.position===n);
+  document.getElementById('autofillTopLabel').textContent = '#1 (currently ' + (topLevel ? topLevel.name : 'no level') + ')';
+  document.getElementById('autofillBottomLabel').textContent = '#' + n + ' (currently ' + (bottomLevel ? bottomLevel.name : 'no level') + ')';
+  document.getElementById('autofillTop').value = '';
+  document.getElementById('autofillBottom').value = '';
+  document.getElementById('autofillMsg').textContent = '';
+  setAutofillCurve('exponential');
+  document.getElementById('autofillModal').classList.add('active');
+}
+function closeAutofillModal(){
+  document.getElementById('autofillModal').classList.remove('active');
+}
+document.getElementById('autofillModal').addEventListener('click', (e)=>{
+  if(e.target.id === 'autofillModal') closeAutofillModal();
+});
+function setAutofillCurve(mode){
+  autofillCurve = mode;
+  document.getElementById('afModeLinear').classList.toggle('active', mode==='linear');
+  document.getElementById('afModeExponential').classList.toggle('active', mode==='exponential');
+}
+function applyAutofill(){
+  const top = parseFloat(document.getElementById('autofillTop').value);
+  const bottom = parseFloat(document.getElementById('autofillBottom').value);
+  const msgEl = document.getElementById('autofillMsg');
+  if(isNaN(top) || top < 0){ msgEl.textContent = 'Enter points for #1.'; msgEl.className='msg error'; return; }
+  if(isNaN(bottom) || bottom < 0){ msgEl.textContent = 'Enter points for #' + currentList.targetSize + '.'; msgEl.className='msg error'; return; }
+
+  const n = currentList.targetSize;
+  document.querySelectorAll('#pcRankRows input').forEach(inp=>{
+    const r = parseInt(inp.dataset.rank, 10);
+    let v;
+    if(n === 1){
+      v = top;
+    }else{
+      const t = (r-1) / (n-1); // 0 at #1, 1 at #last
+      if(autofillCurve === 'exponential' && top > 0 && bottom > 0){
+        v = top * Math.pow(bottom/top, t); // geometric decay from #1 to #last
+      }else{
+        v = top + (bottom - top) * t; // linear
+      }
+    }
+    inp.value = (Math.round(v * 100) / 100).toFixed(2);
+  });
+  closeAutofillModal();
+}
+
+async function savePointsConfig(){
+  currentList.pointsMode = pendingPointsMode;
+  if(pendingPointsMode === 'rank'){
+    const rankPoints = {};
+    document.querySelectorAll('#pcRankRows input').forEach(inp=>{
+      let v = parseFloat(inp.value);
+      if(isNaN(v) || v < 0) v = 0;
+      rankPoints[inp.dataset.rank] = Math.round(v * 100) / 100;
+    });
+    currentList.rankPoints = rankPoints;
+  }
+  await saveListAndSync();
+  renderBuilder();
+  const msgEl = document.getElementById('pcMsg');
+  msgEl.textContent = 'Points configuration saved.';
+  msgEl.className = 'msg ok';
+}
+
+/* ========== list settings ========== */
+function openListSettings(){
+  document.getElementById('stName').value = currentList.name;
+  document.getElementById('stSize').value = currentList.targetSize;
+  document.getElementById('stPass').value = '';
+  document.getElementById('stPass2').value = '';
+  document.getElementById('stRules').value = currentList.rules || '';
+  document.getElementById('settingsMsg').textContent = '';
+  document.getElementById('settingsModal').classList.add('active');
+}
+function closeListSettings(){
+  document.getElementById('settingsModal').classList.remove('active');
+}
+document.getElementById('settingsModal').addEventListener('click', (e)=>{
+  if(e.target.id === 'settingsModal') closeListSettings();
+});
+async function submitListSettings(){
+  const name = document.getElementById('stName').value.trim();
+  const size = parseInt(document.getElementById('stSize').value, 10);
+  const pass = document.getElementById('stPass').value;
+  const pass2 = document.getElementById('stPass2').value;
+  const msgEl = document.getElementById('settingsMsg');
+
+  if(!name){ msgEl.textContent = 'Give your list a name.'; msgEl.className='msg error'; return; }
+  if(!size || size < 1){ msgEl.textContent = 'Choose at least 1 level.'; msgEl.className='msg error'; return; }
+  if(size < currentList.levels.length){
+    msgEl.textContent = 'Target size can\'t be smaller than the ' + currentList.levels.length + ' levels already on this list.';
+    msgEl.className='msg error'; return;
+  }
+  if(pass || pass2){
+    if(pass.length < 3){ msgEl.textContent = 'New password must be at least 3 characters.'; msgEl.className='msg error'; return; }
+    if(pass !== pass2){ msgEl.textContent = 'Passwords don\'t match.'; msgEl.className='msg error'; return; }
+    currentList.passwordHash = hashStr(pass);
+  }
+
+  currentList.name = name;
+  currentList.targetSize = size;
+  currentList.rules = document.getElementById('stRules').value.trim();
+  await saveListDetail(currentList);
+
+  const idx = await loadListsIndex();
+  const entry = idx.find(l=>l.id===currentList.id);
+  if(entry){ entry.name = name; entry.targetSize = size; }
+  await saveListsIndex(idx);
+
+  closeListSettings();
+  renderBuilder();
+}
+async function deleteCurrentList(){
+  showConfirm('Delete "' + currentList.name + '" permanently? This can\'t be undone.', async ()=>{
+    try{ await window.storage.delete(listDetailKey(currentList.id), true); }catch(e){}
+    const idx = await loadListsIndex();
+    const filtered = idx.filter(l=>l.id !== currentList.id);
+    await saveListsIndex(filtered);
+    closeListSettings();
+    currentList = null;
+    enterDashboard();
+  });
+}
+
+/* ========== add/edit level modal ========== */
+async function openAddLevel(levelId, prefill){
+  editingLevelId = levelId || null;
+  pendingImage = null;
+  document.getElementById('levelMsg').textContent = '';
+  document.getElementById('dropzonePreview').classList.add('hidden');
+  document.getElementById('dropzoneText').classList.remove('hidden');
+  document.getElementById('fileInput').value = '';
+
+  const diffSel = document.getElementById('lvDifficulty');
+  diffSel.innerHTML = '<option value="">Select difficulty</option>' +
+    TIERS.map(t=>`<option value="${t.key}">${t.label}</option>`).join('');
+
+  const isRankLocked = currentList.pointsMode === 'rank';
+  document.getElementById('lvPointsField').classList.toggle('hidden', isRankLocked);
+  document.getElementById('lvPointsRankNote').classList.toggle('hidden', !isRankLocked);
+
+  const accounts = await loadAccounts();
+  const datalist = document.getElementById('verifierList');
+  datalist.innerHTML = '';
+  Object.keys(accounts).forEach(name=>{
+    const opt = document.createElement('option');
+    opt.value = name;
+    datalist.appendChild(opt);
+  });
+
+  if(editingLevelId){
+    const lv = currentList.levels.find(l=>l.id===editingLevelId);
+    document.getElementById('levelModalTitle').textContent = 'Edit Level';
+    document.getElementById('lvName').value = lv.name;
+    document.getElementById('lvPosition').value = lv.position;
+    diffSel.value = lv.difficulty || '';
+    document.getElementById('lvVerifier').value = lv.verifier || '';
+    document.getElementById('lvPublisher').value = lv.publisher || '';
+    document.getElementById('lvPoints').value = (typeof lv.points === 'number') ? lv.points.toFixed(2) : '0.00';
+    if(lv.image){
+      pendingImage = lv.image;
+      const img = document.getElementById('dropzonePreview');
+      img.src = lv.image; img.classList.remove('hidden');
+      document.getElementById('dropzoneText').classList.add('hidden');
+    }
+  }else{
+    document.getElementById('levelModalTitle').textContent = prefill ? 'Add Level (from verification record)' : 'Add Level';
+    document.getElementById('lvName').value = prefill ? prefill.name : '';
+    document.getElementById('lvPosition').value = currentList.levels.length + 1;
+    diffSel.value = prefill ? (prefill.difficulty || '') : '';
+    document.getElementById('lvVerifier').value = prefill ? prefill.verifier : '';
+    document.getElementById('lvPublisher').value = '';
+    document.getElementById('lvPoints').value = '0.00';
+  }
+  document.getElementById('levelModal').classList.add('active');
+}
+function closeLevelModal(){
+  document.getElementById('levelModal').classList.remove('active');
+}
+async function submitLevel(){
+  const name = document.getElementById('lvName').value.trim();
+  let position = parseInt(document.getElementById('lvPosition').value, 10);
+  const difficulty = document.getElementById('lvDifficulty').value;
+  const verifier = document.getElementById('lvVerifier').value.trim();
+  const publisher = document.getElementById('lvPublisher').value.trim();
+  let points = parseFloat(document.getElementById('lvPoints').value);
+  if(isNaN(points) || points < 0) points = 0;
+  points = Math.round(points * 100) / 100;
+  const msgEl = document.getElementById('levelMsg');
+  if(!name){ msgEl.textContent = 'Give the level a name.'; msgEl.className='msg error'; return; }
+  if(!difficulty){ msgEl.textContent = 'Choose a difficulty.'; msgEl.className='msg error'; return; }
+
+  let verifiedName = '';
+  if(verifier){
+    const accounts = await loadAccounts();
+    const match = Object.keys(accounts).find(u => u.toLowerCase() === verifier.toLowerCase());
+    if(!match){
+      msgEl.textContent = '"' + verifier + '" isn\'t a registered account. The verifier must sign up first.';
+      msgEl.className = 'msg error';
+      return;
+    }
+    verifiedName = match;
+    if(verifiedName.toLowerCase() === currentList.owner.toLowerCase()){
+      msgEl.textContent = 'The list moderator can\'t be the verifier. Use a separate account to submit and accept that verification.';
+      msgEl.className = 'msg error';
+      return;
+    }
+  }
+
+  const otherCount = currentList.levels.filter(l=>l.id!==editingLevelId).length;
+  const maxPos = otherCount + 1;
+  if(!position || position < 1) position = 1;
+  if(position > maxPos) position = maxPos;
+
+  let pushedOffLevel = null;
+  let savedLevel = null;
+  if(editingLevelId){
+    const lv = currentList.levels.find(l=>l.id===editingLevelId);
+    lv.name = name; lv.difficulty = difficulty; lv.verifier = verifiedName; lv.publisher = publisher; lv.points = points;
+    lv.image = pendingImage; lv.position = position - 0.5; // temp slot, reindexed below
+    savedLevel = lv;
+  }else{
+    savedLevel = {
+      id: uid(), name, difficulty, verifier: verifiedName, publisher, points,
+      image: pendingImage, position: position - 0.5, victors: []
+    };
+    currentList.levels.push(savedLevel);
+  }
+  reindexPositions();
+
+  if(!editingLevelId && currentList.levels.length > currentList.targetSize){
+    pushedOffLevel = currentList.levels.reduce((max, lv) => lv.position > max.position ? lv : max, currentList.levels[0]);
+    const frozenPoints = getLevelPoints(pushedOffLevel);
+    currentList.levels = currentList.levels.filter(l => l.id !== pushedOffLevel.id);
+    currentList.legacy.push({
+      id: pushedOffLevel.id, name: pushedOffLevel.name, difficulty: pushedOffLevel.difficulty,
+      verifier: pushedOffLevel.verifier, publisher: pushedOffLevel.publisher, points: frozenPoints,
+      victors: pushedOffLevel.victors || [], image: pushedOffLevel.image,
+      bestRank: pushedOffLevel.bestRank, pushedOffBy: name, fellOffAt: Date.now()
+    });
+    reindexPositions();
+  }
+
+  if(fulfillingRecordId){
+    const record = currentList.records.find(r=>r.id===fulfillingRecordId);
+    if(record){
+      record.status = 'accepted';
+    }
+    fulfillingRecordId = null;
+  }
+
+  await saveListAndSync();
+  closeLevelModal();
+  renderBuilder();
+  if(document.getElementById('screen-record-feed').classList.contains('active')) renderRecordFeed();
+}
+
+/* image upload -> resized data URL */
+const dropzone = document.getElementById('dropzone');
+const fileInput = document.getElementById('fileInput');
+dropzone.addEventListener('click', ()=> fileInput.click());
+dropzone.addEventListener('dragover', (e)=>{ e.preventDefault(); dropzone.classList.add('drag'); });
+dropzone.addEventListener('dragleave', ()=> dropzone.classList.remove('drag'));
+dropzone.addEventListener('drop', (e)=>{
+  e.preventDefault(); dropzone.classList.remove('drag');
+  if(e.dataTransfer.files[0]) handleImageFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', ()=>{
+  if(fileInput.files[0]) handleImageFile(fileInput.files[0]);
+});
+function handleImageFile(file){
+  if(!file.type.startsWith('image/')) return;
+  const reader = new FileReader();
+  reader.onload = (e)=>{
+    const img = new Image();
+    img.onload = ()=>{
+      const maxW = 320;
+      const scale = Math.min(1, maxW / img.width);
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width * scale;
+      canvas.height = img.height * scale;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      pendingImage = canvas.toDataURL('image/jpeg', 0.82);
+      const preview = document.getElementById('dropzonePreview');
+      preview.src = pendingImage; preview.classList.remove('hidden');
+      document.getElementById('dropzoneText').classList.add('hidden');
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+/* ========== init ========== */
+(async function init(){
+  const session = await loadSession();
+  if(session){
+    currentUser = session.username;
+    if(session.isAdmin){
+      isAdmin = true;
+      enterAdminDashboard();
+    }else{
+      enterDashboard();
+    }
+  }
+})();
+</script>
+</body>
+</html>
