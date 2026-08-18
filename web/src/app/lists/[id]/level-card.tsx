@@ -35,7 +35,7 @@ export default function LevelCard({
         // eslint-disable-next-line @next/next/no-img-element -- image_url is a locally-generated data URI, not a remote asset
         <img className="lv-thumb" src={level.image_url} alt="" />
       ) : (
-        <div className="lv-thumb" />
+        <div className="lv-thumb-empty" />
       )}
       <div className="lv-info">
         <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>

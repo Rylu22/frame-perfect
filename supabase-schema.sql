@@ -334,6 +334,14 @@ $$;
 
 -- update_level: edits a level's fields and, if its position changed,
 -- shifts only the levels between its old and new slot.
+--
+-- Bug fixed here: the shift used to run before the edited row moved out
+-- of its own old slot, so a level being shifted into that slot collided
+-- with the edited row still sitting there — e.g. moving C from #3 to #1
+-- in [A#1,B#2,C#3] shifts B from #2 to #3, but C hasn't left #3 yet, so
+-- two rows both claim #3 and the UNIQUE(list_id, position) constraint
+-- rejects the whole update. Parking the edited row at position -1 first
+-- (outside any valid range) guarantees the shift can never land on it.
 create or replace function public.update_level(
   p_level_id uuid,
   p_position int,
@@ -362,16 +370,20 @@ begin
   select count(*) into v_count from levels where list_id = v_list_id and id <> p_level_id;
   v_clamped_pos := greatest(1, least(coalesce(p_position, v_old_pos), v_count + 1));
 
-  if v_clamped_pos < v_old_pos then
-    update levels set position = position + 100000
-      where list_id = v_list_id and position >= v_clamped_pos and position < v_old_pos;
-    update levels set position = position - 100000 + 1
-      where list_id = v_list_id and position >= 100000;
-  elsif v_clamped_pos > v_old_pos then
-    update levels set position = position + 100000
-      where list_id = v_list_id and position > v_old_pos and position <= v_clamped_pos;
-    update levels set position = position - 100000 - 1
-      where list_id = v_list_id and position >= 100000;
+  if v_clamped_pos <> v_old_pos then
+    update levels set position = -1 where id = p_level_id;
+
+    if v_clamped_pos < v_old_pos then
+      update levels set position = position + 100000
+        where list_id = v_list_id and position >= v_clamped_pos and position < v_old_pos;
+      update levels set position = position - 100000 + 1
+        where list_id = v_list_id and position >= 100000;
+    else
+      update levels set position = position + 100000
+        where list_id = v_list_id and position > v_old_pos and position <= v_clamped_pos;
+      update levels set position = position - 100000 - 1
+        where list_id = v_list_id and position >= 100000;
+    end if;
   end if;
 
   update levels

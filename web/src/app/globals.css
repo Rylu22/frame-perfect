@@ -390,11 +390,19 @@ label {
   font-size: 13px;
 }
 .lv-thumb {
+  height: 52px;
+  width: auto;
+  max-width: 96px;
+  flex: none;
+  border-radius: 6px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+}
+.lv-thumb-empty {
   width: 52px;
   height: 52px;
   flex: none;
   border-radius: 6px;
-  object-fit: contain;
   background: var(--surface-2);
   border: 1px solid var(--border);
 }
