@@ -30,6 +30,12 @@ export default function Viewer({
           {levels.length} / {targetSize} levels
         </div>
         <div style={{ color: "var(--muted)", fontSize: "13px" }}>by {ownerUsername}</div>
+        <Link className="btn btn-ghost btn-sm" href={`/lists/${listId}/stats`}>
+          Stats Viewer
+        </Link>
+        <Link className="btn btn-ghost btn-sm" href={`/lists/${listId}/legacy`}>
+          Legacy List
+        </Link>
       </div>
 
       {isLoggedIn ? (
