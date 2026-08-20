@@ -692,3 +692,40 @@ create policy "owners and editors see all records for their list"
 drop policy if exists "owners and editors update record status" on records;
 create policy "owners and editors update record status"
   on records for update using (public.is_list_owner_or_editor(list_id, auth.uid()));
+
+-- ============================================================
+-- FIX: A LEVEL'S VERIFIER SHOULDN'T ALSO SUBMIT A VICTOR RECORD FOR IT
+-- Enforced here (not just hidden in the submit form) so it holds
+-- regardless of how a row gets written.
+-- ============================================================
+create or replace function public.check_record_not_from_owner()
+returns trigger
+language plpgsql
+as $$
+declare
+  v_owner uuid;
+  v_submitter_is_test boolean;
+  v_owner_is_test boolean;
+  v_level_verifier uuid;
+begin
+  select owner_id into v_owner from lists where id = new.list_id;
+  if v_owner = new.submitted_by then
+    raise exception 'The list owner cannot submit a record to their own list.';
+  end if;
+
+  select is_test into v_submitter_is_test from profiles where id = new.submitted_by;
+  select is_test into v_owner_is_test from profiles where id = v_owner;
+  if coalesce(v_submitter_is_test, false) is distinct from coalesce(v_owner_is_test, false) then
+    raise exception 'Testing sandbox accounts can only submit records to testing sandbox lists.';
+  end if;
+
+  if new.type = 'victor' and new.level_id is not null then
+    select verifier_id into v_level_verifier from levels where id = new.level_id;
+    if v_level_verifier is not null and v_level_verifier = new.submitted_by then
+      raise exception 'The verifier of a level cannot also submit a victor record for it — they already get credit for it as its verifier.';
+    end if;
+  end if;
+
+  return new;
+end;
+$$;

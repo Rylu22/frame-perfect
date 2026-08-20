@@ -28,11 +28,16 @@ export default async function SubmitRecordPage({
     redirect(`/lists/${id}`);
   }
 
-  const { data: levels } = await supabase
+  const { data: levelRows } = await supabase
     .from("levels")
-    .select("id, name, position")
+    .select("id, name, position, verifier_id")
     .eq("list_id", id)
     .order("position");
+
+  // A level's own verifier already gets credit for it — don't offer it as
+  // a level they could also submit a victor record for (the DB enforces
+  // this too, but filtering it out here avoids a confusing round-trip).
+  const levels = (levelRows ?? []).filter((lv) => lv.verifier_id !== user.id);
 
   return (
     <div className="page">
