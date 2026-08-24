@@ -11,6 +11,7 @@ export default function Viewer({
   canSubmit,
   myPoints,
   myCompleted,
+  completedLevelIds,
 }: {
   listId: string;
   listName: string;
@@ -21,6 +22,7 @@ export default function Viewer({
   canSubmit: boolean;
   myPoints: number | null;
   myCompleted: number | null;
+  completedLevelIds: Set<string>;
 }) {
   return (
     <div>
@@ -62,7 +64,9 @@ export default function Viewer({
       {levels.length === 0 ? (
         <div className="empty-note">This list has no levels yet.</div>
       ) : (
-        levels.map((lv, i) => <LevelCard key={lv.id} level={lv} index={i} />)
+        levels.map((lv, i) => (
+          <LevelCard key={lv.id} level={lv} index={i} completed={completedLevelIds.has(lv.id)} />
+        ))
       )}
     </div>
   );

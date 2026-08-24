@@ -314,6 +314,8 @@ label {
   justify-content: center;
   font-size: 14px;
   flex: none;
+  text-decoration: none;
+  cursor: pointer;
 }
 
 .back-link {

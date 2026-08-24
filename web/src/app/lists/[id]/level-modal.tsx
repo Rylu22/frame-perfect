@@ -52,7 +52,7 @@ export default function LevelModal({
   prefill,
 }: {
   onClose: () => void;
-  onSaved: () => void;
+  onSaved: (savedLevel?: { id: string }) => void;
   listId: string;
   ownerUsername: string;
   pointsMode: "level" | "rank";
@@ -148,7 +148,7 @@ export default function LevelModal({
           p_image_url: imageDataUrl,
         };
 
-    const { error: rpcError } = await supabase.rpc(rpcName, rpcArgs);
+    const { data: savedLevel, error: rpcError } = await supabase.rpc(rpcName, rpcArgs);
     setSaving(false);
 
     if (rpcError) {
@@ -156,7 +156,7 @@ export default function LevelModal({
       return;
     }
 
-    onSaved();
+    onSaved(savedLevel ?? undefined);
   }
 
   return (

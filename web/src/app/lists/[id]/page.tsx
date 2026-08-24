@@ -158,18 +158,18 @@ async function ViewerSection({
 }) {
   let myPoints: number | null = null;
   let myCompleted: number | null = null;
+  const completedLevelIds = new Set<string>();
 
   if (userId) {
     const data = await loadListPointsData(listId);
     if (data) {
       myPoints = data.standings.find((s) => s.userId === userId)?.points ?? 0;
       // Verifying a level counts as completing it too, same as beating it.
-      const completedIds = new Set<string>();
       for (const lv of data.levels) {
-        if ((data.victorsByLevel.get(lv.id) ?? []).includes(userId)) completedIds.add(lv.id);
-        if (lv.verifier_id === userId) completedIds.add(lv.id);
+        if ((data.victorsByLevel.get(lv.id) ?? []).includes(userId)) completedLevelIds.add(lv.id);
+        if (lv.verifier_id === userId) completedLevelIds.add(lv.id);
       }
-      myCompleted = completedIds.size;
+      myCompleted = completedLevelIds.size;
     }
   }
 
@@ -180,6 +180,7 @@ async function ViewerSection({
       ownerUsername={ownerUsername}
       targetSize={targetSize}
       levels={levels}
+      completedLevelIds={completedLevelIds}
       isLoggedIn={userId !== null}
       canSubmit={canSubmit}
       myPoints={myPoints}

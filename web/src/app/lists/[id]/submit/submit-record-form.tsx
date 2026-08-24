@@ -17,6 +17,7 @@ export default function SubmitRecordForm({
   const router = useRouter();
   const [type, setType] = useState<RecordType>("victor");
   const [videoUrl, setVideoUrl] = useState("");
+  const [videoPrivate, setVideoPrivate] = useState(false);
   const [levelId, setLevelId] = useState(levels[0]?.id ?? "");
   const [levelName, setLevelName] = useState("");
   const [difficulty, setDifficulty] = useState("");
@@ -35,6 +36,7 @@ export default function SubmitRecordForm({
       list_id: listId,
       type,
       video_url: trimmedVideo || null,
+      video_private: trimmedVideo ? videoPrivate : false,
       status: "pending",
     };
 
@@ -129,6 +131,21 @@ export default function SubmitRecordForm({
         <label htmlFor="srVideoUrl">Video link (optional)</label>
         <input type="text" id="srVideoUrl" value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)} />
       </div>
+
+      {videoUrl.trim() && (
+        <div className="field" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          <input
+            type="checkbox"
+            id="srVideoPrivate"
+            checked={videoPrivate}
+            onChange={(e) => setVideoPrivate(e.target.checked)}
+            style={{ width: "16px", height: "16px" }}
+          />
+          <label htmlFor="srVideoPrivate" style={{ marginBottom: 0, textTransform: "none", letterSpacing: 0 }}>
+            Keep my video private (only the moderator reviewing this record can watch it)
+          </label>
+        </div>
+      )}
 
       <button className="btn btn-primary btn-block" onClick={submit} disabled={submitting}>
         {submitting ? "Submitting..." : "Submit Record"}

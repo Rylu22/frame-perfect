@@ -729,3 +729,218 @@ begin
   return new;
 end;
 $$;
+
+-- ============================================================
+-- LEVEL COMPLETIONS DROPDOWN + VIDEO PRIVACY
+-- Clicking a level's victor count now shows who verified and beat it
+-- (in order), each with a play button if they left a video public. The
+-- video's real URL is never exposed for a submitter who marked it
+-- private — get_level_completions (below) is the *only* path that can
+-- surface a video_url outside the moderator's own Record Feed, and it
+-- nulls out private ones itself, so there's no client-side "hide the
+-- button" step to bypass.
+-- ============================================================
+
+alter table records add column if not exists video_private boolean not null default false;
+
+-- Links a victor-credit row back to the record that earned it, and a
+-- level's verifier back to the record that verified it (when there is
+-- one — a verifier set directly through Add/Edit Level has no record).
+alter table level_victors add column if not exists record_id uuid references records(id) on delete set null;
+alter table legacy_victors add column if not exists record_id uuid references records(id) on delete set null;
+alter table levels add column if not exists verifier_record_id uuid references records(id) on delete set null;
+alter table legacy_levels add column if not exists verifier_record_id uuid references records(id) on delete set null;
+
+-- accept_victor_record now also stamps which record earned the credit.
+create or replace function public.accept_victor_record(p_record_id uuid)
+returns void
+language plpgsql
+security definer set search_path = public
+as $$
+declare
+  v_list_id uuid;
+  v_level_id uuid;
+  v_submitted_by uuid;
+  v_status text;
+  v_owner uuid;
+  v_is_editor boolean;
+begin
+  select list_id, level_id, submitted_by, status
+    into v_list_id, v_level_id, v_submitted_by, v_status
+  from records where id = p_record_id and type = 'victor';
+
+  if v_list_id is null then
+    raise exception 'record not found';
+  end if;
+  if v_status <> 'pending' then
+    raise exception 'record is not pending';
+  end if;
+
+  select owner_id into v_owner from lists where id = v_list_id;
+  select exists(select 1 from list_editors where list_id = v_list_id and user_id = auth.uid())
+    into v_is_editor;
+  if auth.uid() is distinct from v_owner and not v_is_editor then
+    raise exception 'not authorized';
+  end if;
+
+  insert into level_victors (level_id, user_id, record_id)
+  values (v_level_id, v_submitted_by, p_record_id)
+  on conflict (level_id, user_id) do update set record_id = excluded.record_id;
+
+  update records set status = 'accepted' where id = p_record_id;
+end;
+$$;
+
+-- add_level's legacy-archive step now carries verifier_record_id (on the
+-- level) and each victor's record_id along when a level falls off.
+create or replace function public.add_level(
+  p_list_id uuid,
+  p_position int,
+  p_name text,
+  p_difficulty text,
+  p_verifier_id uuid,
+  p_publisher text,
+  p_points numeric,
+  p_image_url text
+) returns levels
+language plpgsql
+security invoker
+as $$
+declare
+  v_count int;
+  v_target_size int;
+  v_clamped_pos int;
+  v_new_level levels;
+  v_pushed_id uuid;
+begin
+  select count(*) into v_count from levels where list_id = p_list_id;
+  select target_size into v_target_size from lists where id = p_list_id;
+  if v_target_size is null then
+    raise exception 'list not found';
+  end if;
+
+  v_clamped_pos := greatest(1, least(coalesce(p_position, v_count + 1), v_count + 1));
+
+  update levels set position = position + 100000
+    where list_id = p_list_id and position >= v_clamped_pos;
+  update levels set position = position - 100000 + 1
+    where list_id = p_list_id and position >= 100000;
+
+  insert into levels (list_id, name, difficulty, verifier_id, publisher, points, position, image_url, best_rank)
+  values (p_list_id, p_name, p_difficulty, p_verifier_id, p_publisher, p_points, v_clamped_pos, p_image_url, v_clamped_pos)
+  returning * into v_new_level;
+
+  select count(*) into v_count from levels where list_id = p_list_id;
+  if v_count > v_target_size then
+    select id into v_pushed_id from levels where list_id = p_list_id order by position desc limit 1;
+
+    insert into legacy_levels (id, list_id, name, difficulty, verifier_id, publisher, points, best_rank, pushed_off_by, verifier_record_id)
+    select id, list_id, name, difficulty, verifier_id, publisher, points, best_rank, p_name, verifier_record_id
+    from levels where id = v_pushed_id;
+
+    insert into legacy_victors (legacy_level_id, user_id, record_id)
+    select level_id, user_id, record_id from level_victors where level_id = v_pushed_id;
+
+    delete from levels where id = v_pushed_id;
+  end if;
+
+  return v_new_level;
+end;
+$$;
+
+-- update_level now clears verifier_record_id whenever the verifier
+-- actually changes, so a stale record never gets attributed to whoever's
+-- newly set as verifier. `verifier_id` on the right-hand side below
+-- refers to the row's value *before* this UPDATE, per standard SQL.
+create or replace function public.update_level(
+  p_level_id uuid,
+  p_position int,
+  p_name text,
+  p_difficulty text,
+  p_verifier_id uuid,
+  p_publisher text,
+  p_points numeric,
+  p_image_url text
+) returns levels
+language plpgsql
+security invoker
+as $$
+declare
+  v_list_id uuid;
+  v_old_pos int;
+  v_count int;
+  v_clamped_pos int;
+  v_updated levels;
+begin
+  select list_id, position into v_list_id, v_old_pos from levels where id = p_level_id;
+  if v_list_id is null then
+    raise exception 'level not found';
+  end if;
+
+  select count(*) into v_count from levels where list_id = v_list_id and id <> p_level_id;
+  v_clamped_pos := greatest(1, least(coalesce(p_position, v_old_pos), v_count + 1));
+
+  if v_clamped_pos <> v_old_pos then
+    update levels set position = -1 where id = p_level_id;
+
+    if v_clamped_pos < v_old_pos then
+      update levels set position = position + 100000
+        where list_id = v_list_id and position >= v_clamped_pos and position < v_old_pos;
+      update levels set position = position - 100000 + 1
+        where list_id = v_list_id and position >= 100000;
+    else
+      update levels set position = position + 100000
+        where list_id = v_list_id and position > v_old_pos and position <= v_clamped_pos;
+      update levels set position = position - 100000 - 1
+        where list_id = v_list_id and position >= 100000;
+    end if;
+  end if;
+
+  update levels
+    set name = p_name,
+        difficulty = p_difficulty,
+        verifier_id = p_verifier_id,
+        publisher = p_publisher,
+        points = p_points,
+        position = v_clamped_pos,
+        image_url = p_image_url,
+        best_rank = least(best_rank, v_clamped_pos),
+        verifier_record_id = case when verifier_id is distinct from p_verifier_id then null else verifier_record_id end
+    where id = p_level_id
+    returning * into v_updated;
+
+  return v_updated;
+end;
+$$;
+
+-- get_level_completions: verifier first, then victors in the order they
+-- were accepted ("1st victor", "2nd victor", ...), each with a video_url
+-- that's already null'd out if the submitter marked it private.
+create or replace function public.get_level_completions(p_level_id uuid)
+returns table(role text, user_id uuid, username text, video_url text)
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select role, user_id, username, video_url from (
+    select 'verifier'::text as role, p.id as user_id, p.username,
+      case when r.video_private then null else r.video_url end as video_url,
+      0 as sort_order, l.created_at as sort_time
+    from levels l
+    join profiles p on p.id = l.verifier_id
+    left join records r on r.id = l.verifier_record_id
+    where l.id = p_level_id and l.verifier_id is not null
+
+    union all
+
+    select 'victor'::text as role, p.id as user_id, p.username,
+      case when r.video_private then null else r.video_url end as video_url,
+      1 as sort_order, lv.awarded_at as sort_time
+    from level_victors lv
+    join profiles p on p.id = lv.user_id
+    left join records r on r.id = lv.record_id
+    where lv.level_id = p_level_id
+  ) combined
+  order by sort_order, sort_time asc;
+$$;

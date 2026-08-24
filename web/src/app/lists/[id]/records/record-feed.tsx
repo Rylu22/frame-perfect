@@ -120,8 +120,11 @@ export default function RecordFeed({
         <LevelModal
           key={fulfilling.id}
           onClose={() => setFulfilling(null)}
-          onSaved={async () => {
+          onSaved={async (savedLevel) => {
             const supabase = createClient();
+            if (savedLevel) {
+              await supabase.from("levels").update({ verifier_record_id: fulfilling.id }).eq("id", savedLevel.id);
+            }
             await supabase.from("records").update({ status: "accepted" }).eq("id", fulfilling.id);
             setFulfilling(null);
             router.refresh();
