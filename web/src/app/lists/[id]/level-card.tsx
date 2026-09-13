@@ -13,6 +13,7 @@ export type LevelCardData = {
   points: number;
   image_url: string | null;
   victor_count: number;
+  description: string;
 };
 
 type Completion = { role: "verifier" | "victor"; user_id: string; username: string; video_url: string | null };
@@ -36,6 +37,7 @@ export default function LevelCard({
   const [open, setOpen] = useState(false);
   const [completions, setCompletions] = useState<Completion[] | null>(null);
   const [loading, setLoading] = useState(false);
+  const [descOpen, setDescOpen] = useState(false);
 
   async function toggleOpen() {
     const next = !open;
@@ -67,7 +69,14 @@ export default function LevelCard({
               &#10003;
             </span>
           )}
-          <span className="lv-name">{level.name}</span>
+          <span
+            className="lv-name"
+            style={{ cursor: "pointer", textDecoration: "underline dotted" }}
+            title="Show description"
+            onClick={() => setDescOpen((v) => !v)}
+          >
+            {level.name}
+          </span>
           {tier && (
             <span className="tier-tag" style={{ "--tier": tier.color } as CSSProperties}>
               {tier.label}
@@ -85,6 +94,12 @@ export default function LevelCard({
           Verified by {level.verifier_username ?? "—"} &middot; Published by{" "}
           {level.publisher || "—"} &middot; {level.points.toFixed(2)} pts
         </div>
+
+        {descOpen && (
+          <div className="empty-note" style={{ marginTop: "8px", whiteSpace: "pre-wrap" }}>
+            {level.description.trim() || "No description yet."}
+          </div>
+        )}
 
         {open && (
           <div style={{ marginTop: "8px" }}>

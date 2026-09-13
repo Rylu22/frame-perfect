@@ -64,6 +64,7 @@ export default function LevelModal({
   const [difficulty, setDifficulty] = useState(editingLevel?.difficulty ?? prefill?.difficulty ?? "");
   const [verifier, setVerifier] = useState(editingLevel?.verifier_username ?? prefill?.verifier ?? "");
   const [publisher, setPublisher] = useState(editingLevel?.publisher ?? "");
+  const [description, setDescription] = useState(editingLevel?.description ?? "");
   const [points, setPoints] = useState(editingLevel ? editingLevel.points.toFixed(2) : "0.00");
   const [position, setPosition] = useState(editingLevel?.position ?? defaultPosition);
   const [imageDataUrl, setImageDataUrl] = useState<string | null>(editingLevel?.image_url ?? null);
@@ -136,6 +137,7 @@ export default function LevelModal({
           p_publisher: publisher.trim(),
           p_points: parsedPoints,
           p_image_url: imageDataUrl,
+          p_description: description.trim(),
         }
       : {
           p_list_id: listId,
@@ -146,6 +148,7 @@ export default function LevelModal({
           p_publisher: publisher.trim(),
           p_points: parsedPoints,
           p_image_url: imageDataUrl,
+          p_description: description.trim(),
         };
 
     const { data: savedLevel, error: rpcError } = await supabase.rpc(rpcName, rpcArgs);
@@ -236,6 +239,16 @@ export default function LevelModal({
         <div className="field">
           <label htmlFor="lvPublisher">Publisher</label>
           <input type="text" id="lvPublisher" value={publisher} onChange={(e) => setPublisher(e.target.value)} />
+        </div>
+
+        <div className="field">
+          <label htmlFor="lvDescription">Description (optional)</label>
+          <textarea
+            id="lvDescription"
+            rows={3}
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+          />
         </div>
 
         {pointsMode === "level" ? (

@@ -944,3 +944,138 @@ as $$
   ) combined
   order by sort_order, sort_time asc;
 $$;
+
+-- ============================================================
+-- LEVEL DESCRIPTIONS
+-- Editors write/edit a level's description from the Add/Edit Level modal;
+-- anyone (viewer or editor) reads it from a dropdown on the level card,
+-- opened by clicking the level's name.
+-- ============================================================
+
+alter table levels add column if not exists description text not null default '';
+
+-- add_level/update_level gain a p_description param — a genuine signature
+-- change, so the old 8-arg overloads must be dropped explicitly, or
+-- `create or replace` would leave them alongside the new 9-arg versions
+-- instead of replacing them.
+drop function if exists public.add_level(uuid, int, text, text, uuid, text, numeric, text);
+drop function if exists public.update_level(uuid, int, text, text, uuid, text, numeric, text);
+
+create or replace function public.add_level(
+  p_list_id uuid,
+  p_position int,
+  p_name text,
+  p_difficulty text,
+  p_verifier_id uuid,
+  p_publisher text,
+  p_points numeric,
+  p_image_url text,
+  p_description text default ''
+) returns levels
+language plpgsql
+security invoker
+as $$
+declare
+  v_count int;
+  v_target_size int;
+  v_clamped_pos int;
+  v_new_level levels;
+  v_pushed_id uuid;
+begin
+  select count(*) into v_count from levels where list_id = p_list_id;
+  select target_size into v_target_size from lists where id = p_list_id;
+  if v_target_size is null then
+    raise exception 'list not found';
+  end if;
+
+  v_clamped_pos := greatest(1, least(coalesce(p_position, v_count + 1), v_count + 1));
+
+  update levels set position = position + 100000
+    where list_id = p_list_id and position >= v_clamped_pos;
+  update levels set position = position - 100000 + 1
+    where list_id = p_list_id and position >= 100000;
+
+  insert into levels (list_id, name, difficulty, verifier_id, publisher, points, position, image_url, best_rank, description)
+  values (p_list_id, p_name, p_difficulty, p_verifier_id, p_publisher, p_points, v_clamped_pos, p_image_url, v_clamped_pos, coalesce(p_description, ''))
+  returning * into v_new_level;
+
+  select count(*) into v_count from levels where list_id = p_list_id;
+  if v_count > v_target_size then
+    select id into v_pushed_id from levels where list_id = p_list_id order by position desc limit 1;
+
+    insert into legacy_levels (id, list_id, name, difficulty, verifier_id, publisher, points, best_rank, pushed_off_by, verifier_record_id)
+    select id, list_id, name, difficulty, verifier_id, publisher, points, best_rank, p_name, verifier_record_id
+    from levels where id = v_pushed_id;
+
+    insert into legacy_victors (legacy_level_id, user_id, record_id)
+    select level_id, user_id, record_id from level_victors where level_id = v_pushed_id;
+
+    delete from levels where id = v_pushed_id;
+  end if;
+
+  return v_new_level;
+end;
+$$;
+
+create or replace function public.update_level(
+  p_level_id uuid,
+  p_position int,
+  p_name text,
+  p_difficulty text,
+  p_verifier_id uuid,
+  p_publisher text,
+  p_points numeric,
+  p_image_url text,
+  p_description text default ''
+) returns levels
+language plpgsql
+security invoker
+as $$
+declare
+  v_list_id uuid;
+  v_old_pos int;
+  v_count int;
+  v_clamped_pos int;
+  v_updated levels;
+begin
+  select list_id, position into v_list_id, v_old_pos from levels where id = p_level_id;
+  if v_list_id is null then
+    raise exception 'level not found';
+  end if;
+
+  select count(*) into v_count from levels where list_id = v_list_id and id <> p_level_id;
+  v_clamped_pos := greatest(1, least(coalesce(p_position, v_old_pos), v_count + 1));
+
+  if v_clamped_pos <> v_old_pos then
+    update levels set position = -1 where id = p_level_id;
+
+    if v_clamped_pos < v_old_pos then
+      update levels set position = position + 100000
+        where list_id = v_list_id and position >= v_clamped_pos and position < v_old_pos;
+      update levels set position = position - 100000 + 1
+        where list_id = v_list_id and position >= 100000;
+    else
+      update levels set position = position + 100000
+        where list_id = v_list_id and position > v_old_pos and position <= v_clamped_pos;
+      update levels set position = position - 100000 - 1
+        where list_id = v_list_id and position >= 100000;
+    end if;
+  end if;
+
+  update levels
+    set name = p_name,
+        difficulty = p_difficulty,
+        verifier_id = p_verifier_id,
+        publisher = p_publisher,
+        points = p_points,
+        position = v_clamped_pos,
+        image_url = p_image_url,
+        description = coalesce(p_description, ''),
+        best_rank = least(best_rank, v_clamped_pos),
+        verifier_record_id = case when verifier_id is distinct from p_verifier_id then null else verifier_record_id end
+    where id = p_level_id
+    returning * into v_updated;
+
+  return v_updated;
+end;
+$$;

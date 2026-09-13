@@ -28,6 +28,7 @@ type LevelQueryRow = {
   points: number;
   position: number;
   image_url: string | null;
+  description: string | null;
   profiles: { username: string } | { username: string }[] | null;
   level_victors: { count: number }[] | null;
 };
@@ -63,7 +64,7 @@ export default async function ListPage({
   const { data: levelRows } = await supabase
     .from("levels")
     .select(
-      "id, name, difficulty, verifier_id, publisher, points, position, image_url, profiles!verifier_id(username), level_victors(count)",
+      "id, name, difficulty, verifier_id, publisher, points, position, image_url, description, profiles!verifier_id(username), level_victors(count)",
     )
     .eq("list_id", id)
     .order("position")
@@ -90,6 +91,7 @@ export default async function ListPage({
       raw_points: Number(row.points),
       position: row.position,
       image_url: row.image_url,
+      description: row.description ?? "",
       victor_count: row.level_victors?.[0]?.count ?? 0,
     };
   });
