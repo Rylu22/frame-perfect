@@ -69,12 +69,7 @@ export default function LevelCard({
               &#10003;
             </span>
           )}
-          <span
-            className="lv-name"
-            style={{ cursor: "pointer", textDecoration: "underline dotted" }}
-            title="Show description"
-            onClick={() => setDescOpen((v) => !v)}
-          >
+          <span className="lv-name" style={{ cursor: "pointer" }} title="Show description" onClick={() => setDescOpen((v) => !v)}>
             {level.name}
           </span>
           {tier && (
@@ -82,11 +77,7 @@ export default function LevelCard({
               {tier.label}
             </span>
           )}
-          <span
-            className="victor-count"
-            style={{ cursor: "pointer", textDecoration: "underline dotted" }}
-            onClick={toggleOpen}
-          >
+          <span className="victor-count" onClick={toggleOpen}>
             {level.victor_count} victor{level.victor_count === 1 ? "" : "s"}
           </span>
         </div>

@@ -443,6 +443,16 @@ label {
   font-family: var(--font-jetbrains-mono), monospace;
   font-size: 11px;
   color: var(--muted);
+  cursor: pointer;
+  padding: 3px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  white-space: nowrap;
+}
+.victor-count:hover {
+  border-color: var(--accent);
+  color: var(--text);
 }
 
 .rule-box {
