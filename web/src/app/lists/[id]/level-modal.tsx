@@ -3,37 +3,10 @@
 import { useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { TIERS } from "@/lib/tiers";
+import { resizeImageToDataUrl } from "@/lib/image";
 import type { LevelCardData } from "./level-card";
 
 export type EditingLevel = LevelCardData & { verifier_id: string | null; position: number };
-
-const MAX_IMAGE_WIDTH = 320;
-
-function resizeImageToDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const img = new Image();
-      img.onload = () => {
-        const scale = Math.min(1, MAX_IMAGE_WIDTH / img.width);
-        const canvas = document.createElement("canvas");
-        canvas.width = img.width * scale;
-        canvas.height = img.height * scale;
-        const ctx = canvas.getContext("2d");
-        if (!ctx) {
-          reject(new Error("Canvas not supported"));
-          return;
-        }
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        resolve(canvas.toDataURL("image/jpeg", 0.82));
-      };
-      img.onerror = reject;
-      img.src = String(e.target?.result);
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
 
 // Mounted by the parent only while the modal should be open (see Builder),
 // so all state below can initialize straight from props — no effect-based

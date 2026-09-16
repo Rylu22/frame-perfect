@@ -20,6 +20,7 @@ const NAV_SECTIONS: { slug: string; label: string }[] = [
   { slug: "stats", label: "Stats Viewer" },
   { slug: "legacy", label: "Legacy List" },
   { slug: "points", label: "Points Config" },
+  { slug: "progress", label: "Progress" },
 ];
 
 export default function Builder({

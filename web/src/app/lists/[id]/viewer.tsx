@@ -38,6 +38,9 @@ export default function Viewer({
         <Link className="btn btn-ghost btn-sm" href={`/lists/${listId}/legacy`}>
           Legacy List
         </Link>
+        <Link className="btn btn-ghost btn-sm" href={`/lists/${listId}/progress`}>
+          Progress
+        </Link>
       </div>
 
       {isLoggedIn ? (

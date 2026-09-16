@@ -1079,3 +1079,62 @@ begin
   return v_updated;
 end;
 $$;
+
+-- ============================================================
+-- PROGRESS TAB
+-- Freeform "what I'm working on" board, one section per list. A player
+-- posts a block for a level they're beating (an existing list level —
+-- the header shows its live position, e.g. "Ship of Fools (Top 5)") or
+-- verifying (a level not on the list yet, so they supply its name, an
+-- estimated rank, who they got permission from, the publisher, and a
+-- thumbnail — header reads "Ship of Fools (Verifying Top 5)"). The three
+-- note fields are unrestricted freeform text, editable any time by the
+-- author. Public read, same as everything else in a list; writes are
+-- author-only except delete, which the list's owner/editors can also do
+-- (same moderation reach they have over levels and records).
+-- ============================================================
+
+create table level_progress (
+  id uuid primary key default gen_random_uuid(),
+  list_id uuid not null references lists(id) on delete cascade,
+  user_id uuid not null references profiles(id) on delete cascade,
+  mode text not null check (mode in ('beating', 'verifying')),
+  level_id uuid references levels(id) on delete cascade,      -- set when mode = 'beating'
+  level_name text,                                            -- set when mode = 'verifying'
+  estimated_rank int,                                         -- set when mode = 'verifying'
+  permission_from text not null default '',                   -- verifying: the level's victor/verifier they got permission from
+  publisher text not null default '',                         -- verifying: the level's publisher
+  thumbnail_url text,                                         -- verifying: optional, same data-URI pattern as levels.image_url
+  note1 text not null default '',
+  note2 text not null default '',
+  note3 text not null default '',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  check (
+    (mode = 'beating' and level_id is not null and level_name is null and estimated_rank is null)
+    or
+    (mode = 'verifying' and level_id is null and level_name is not null and estimated_rank is not null and estimated_rank > 0)
+  )
+);
+
+alter table level_progress enable row level security;
+
+create policy "progress blocks are publicly readable"
+  on level_progress for select using (true);
+
+create policy "players add their own progress blocks"
+  on level_progress for insert with check (auth.uid() = user_id);
+
+create policy "players edit their own progress blocks"
+  on level_progress for update using (auth.uid() = user_id);
+
+create policy "authors and list managers delete progress blocks"
+  on level_progress for delete using (
+    auth.uid() = user_id
+    or exists (
+      select 1 from lists l
+      where l.id = list_id
+      and (l.owner_id = auth.uid()
+           or exists (select 1 from list_editors e where e.list_id = l.id and e.user_id = auth.uid()))
+    )
+  );
