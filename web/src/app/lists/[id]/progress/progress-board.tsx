@@ -79,24 +79,26 @@ export default function ProgressBoard({
       {blocks.length === 0 ? (
         <div className="empty-note">No progress blocks yet. Be the first to post what you&apos;re working on.</div>
       ) : (
-        blocks.map((block) => (
-          <ProgressCard
-            key={block.id}
-            block={block}
-            actions={
-              canPost && block.userId === currentUserId ? (
-                <>
-                  <div className="icon-btn" title="Edit" onClick={() => openEdit(block)}>
-                    &#9998;
-                  </div>
-                  <div className="icon-btn btn-danger" title="Delete" onClick={() => setDeleteTarget(block)}>
-                    &#10005;
-                  </div>
-                </>
-              ) : undefined
-            }
-          />
-        ))
+        <div className="progress-grid">
+          {blocks.map((block) => (
+            <ProgressCard
+              key={block.id}
+              block={block}
+              actions={
+                canPost && block.userId === currentUserId ? (
+                  <>
+                    <div className="icon-btn" title="Edit" onClick={() => openEdit(block)}>
+                      &#9998;
+                    </div>
+                    <div className="icon-btn btn-danger" title="Delete" onClick={() => setDeleteTarget(block)}>
+                      &#10005;
+                    </div>
+                  </>
+                ) : undefined
+              }
+            />
+          ))}
+        </div>
       )}
 
       {modalOpen && (
