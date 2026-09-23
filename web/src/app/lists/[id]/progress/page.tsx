@@ -11,12 +11,9 @@ type ProgressQueryRow = {
   level_id: string | null;
   level_name: string | null;
   estimated_rank: number | null;
-  permission_from: string;
   publisher: string;
   thumbnail_url: string | null;
-  note1: string;
-  note2: string;
-  note3: string;
+  runs: { start: number; end: number }[];
   profiles: { username: string } | { username: string }[] | null;
   levels: { name: string; position: number } | { name: string; position: number }[] | null;
 };
@@ -42,7 +39,7 @@ export default async function ProgressPage({
   const { data: progressRows } = await supabase
     .from("level_progress")
     .select(
-      "id, user_id, mode, level_id, level_name, estimated_rank, permission_from, publisher, thumbnail_url, note1, note2, note3, profiles!user_id(username), levels(name, position)",
+      "id, user_id, mode, level_id, level_name, estimated_rank, publisher, thumbnail_url, runs, profiles!user_id(username), levels(name, position)",
     )
     .eq("list_id", id)
     .order("updated_at", { ascending: false })
@@ -59,12 +56,9 @@ export default async function ProgressPage({
       levelId: row.level_id,
       levelName: level?.name ?? row.level_name ?? "",
       rank: row.mode === "beating" ? (level?.position ?? null) : row.estimated_rank,
-      permissionFrom: row.permission_from,
       publisher: row.publisher,
       thumbnailUrl: row.thumbnail_url,
-      note1: row.note1,
-      note2: row.note2,
-      note3: row.note3,
+      runs: row.runs ?? [],
     };
   });
 

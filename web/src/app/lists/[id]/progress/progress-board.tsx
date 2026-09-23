@@ -15,12 +15,9 @@ export type ProgressBlock = {
   levelId: string | null;
   levelName: string;
   rank: number | null;
-  permissionFrom: string;
   publisher: string;
   thumbnailUrl: string | null;
-  note1: string;
-  note2: string;
-  note3: string;
+  runs: { start: number; end: number }[];
 };
 
 export default function ProgressBoard({

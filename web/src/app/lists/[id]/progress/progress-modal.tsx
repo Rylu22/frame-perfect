@@ -4,8 +4,11 @@ import { useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { resizeImageToDataUrl } from "@/lib/image";
 import type { ProgressBlock } from "./progress-board";
+import RunBar from "./run-bar";
 
 type Mode = "beating" | "verifying";
+type RunDraft = { start: string; end: string };
+const MAX_RUNS = 3;
 
 export default function ProgressModal({
   onClose,
@@ -26,16 +29,25 @@ export default function ProgressModal({
   const [estimatedRank, setEstimatedRank] = useState(
     editingBlock?.mode === "verifying" && editingBlock.rank ? String(editingBlock.rank) : "",
   );
-  const [permissionFrom, setPermissionFrom] = useState(editingBlock?.permissionFrom ?? "");
   const [publisher, setPublisher] = useState(editingBlock?.publisher ?? "");
   const [thumbnailDataUrl, setThumbnailDataUrl] = useState<string | null>(editingBlock?.thumbnailUrl ?? null);
   const [dragActive, setDragActive] = useState(false);
-  const [note1, setNote1] = useState(editingBlock?.note1 ?? "");
-  const [note2, setNote2] = useState(editingBlock?.note2 ?? "");
-  const [note3, setNote3] = useState(editingBlock?.note3 ?? "");
+  const [runs, setRuns] = useState<RunDraft[]>(
+    editingBlock?.runs.map((r) => ({ start: String(r.start), end: String(r.end) })) ?? [],
+  );
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  function addRun() {
+    setRuns((prev) => (prev.length >= MAX_RUNS ? prev : [...prev, { start: "", end: "" }]));
+  }
+  function removeRun(i: number) {
+    setRuns((prev) => prev.filter((_, idx) => idx !== i));
+  }
+  function updateRun(i: number, field: "start" | "end", value: string) {
+    setRuns((prev) => prev.map((r, idx) => (idx === i ? { ...r, [field]: value } : r)));
+  }
 
   async function handleFile(file: File) {
     if (!file.type.startsWith("image/")) return;
@@ -50,12 +62,21 @@ export default function ProgressModal({
   async function submit() {
     setError(null);
 
+    const parsedRuns: { start: number; end: number }[] = [];
+    for (let i = 0; i < runs.length; i++) {
+      const start = parseInt(runs[i].start, 10);
+      const end = parseInt(runs[i].end, 10);
+      if (!Number.isInteger(start) || !Number.isInteger(end) || start < 0 || end > 100 || start >= end) {
+        setError(`Run ${i + 1}: enter a valid range from 0% to 100% (start below end).`);
+        return;
+      }
+      parsedRuns.push({ start, end });
+    }
+
     const payload: Record<string, unknown> = {
       list_id: listId,
       mode,
-      note1,
-      note2,
-      note3,
+      runs: parsedRuns,
       updated_at: new Date().toISOString(),
     };
 
@@ -67,13 +88,11 @@ export default function ProgressModal({
       payload.level_id = levelId;
       payload.level_name = null;
       payload.estimated_rank = null;
-      payload.permission_from = "";
       payload.publisher = "";
       payload.thumbnail_url = null;
     } else {
       const trimmedName = levelName.trim();
       const rank = parseInt(estimatedRank, 10);
-      const trimmedPermission = permissionFrom.trim();
       const trimmedPublisher = publisher.trim();
       if (!trimmedName) {
         setError("Enter the name of the level you're verifying.");
@@ -81,10 +100,6 @@ export default function ProgressModal({
       }
       if (!Number.isInteger(rank) || rank <= 0) {
         setError("Enter your estimated rank.");
-        return;
-      }
-      if (!trimmedPermission) {
-        setError("Enter who gave you permission to verify (the level's victor or verifier).");
         return;
       }
       if (!trimmedPublisher) {
@@ -98,7 +113,6 @@ export default function ProgressModal({
       payload.level_id = null;
       payload.level_name = trimmedName;
       payload.estimated_rank = rank;
-      payload.permission_from = trimmedPermission;
       payload.publisher = trimmedPublisher;
       payload.thumbnail_url = thumbnailDataUrl;
     }
@@ -218,30 +232,44 @@ export default function ProgressModal({
                 />
               </div>
             </div>
-
-            <div className="field">
-              <label htmlFor="pgPermission">Permission from (level&apos;s victor or verifier)</label>
-              <input
-                type="text"
-                id="pgPermission"
-                value={permissionFrom}
-                onChange={(e) => setPermissionFrom(e.target.value)}
-              />
-            </div>
           </>
         )}
 
         <div className="field">
-          <label htmlFor="pgNote1">Note 1</label>
-          <textarea id="pgNote1" rows={2} value={note1} onChange={(e) => setNote1(e.target.value)} />
-        </div>
-        <div className="field">
-          <label htmlFor="pgNote2">Note 2</label>
-          <textarea id="pgNote2" rows={2} value={note2} onChange={(e) => setNote2(e.target.value)} />
-        </div>
-        <div className="field">
-          <label htmlFor="pgNote3">Note 3</label>
-          <textarea id="pgNote3" rows={2} value={note3} onChange={(e) => setNote3(e.target.value)} />
+          <label>Runs ({runs.length}/{MAX_RUNS})</label>
+          {runs.map((run, i) => (
+            <div key={i} className="run-row">
+              <div className="run-row-inputs">
+                <input
+                  type="number"
+                  min={0}
+                  max={100}
+                  placeholder="0"
+                  value={run.start}
+                  onChange={(e) => updateRun(i, "start", e.target.value)}
+                />
+                <span>% &ndash;</span>
+                <input
+                  type="number"
+                  min={0}
+                  max={100}
+                  placeholder="100"
+                  value={run.end}
+                  onChange={(e) => updateRun(i, "end", e.target.value)}
+                />
+                <span>%</span>
+                <div className="icon-btn btn-danger" title="Remove run" onClick={() => removeRun(i)}>
+                  &#10005;
+                </div>
+              </div>
+              <RunBar start={Number(run.start) || 0} end={Number(run.end) || 0} />
+            </div>
+          ))}
+          {runs.length < MAX_RUNS && (
+            <button type="button" className="btn btn-ghost btn-sm" onClick={addRun}>
+              + Add Run
+            </button>
+          )}
         </div>
 
         <div className={`msg ${error ? "error" : ""}`}>{error}</div>

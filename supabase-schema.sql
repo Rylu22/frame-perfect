@@ -1086,12 +1086,13 @@ $$;
 -- posts a block for a level they're beating (an existing list level —
 -- the header shows its live position, e.g. "Ship of Fools (Top 5)") or
 -- verifying (a level not on the list yet, so they supply its name, an
--- estimated rank, who they got permission from, the publisher, and a
--- thumbnail — header reads "Ship of Fools (Verifying Top 5)"). The three
--- note fields are unrestricted freeform text, editable any time by the
--- author. Public read, same as everything else in a list; writes are
--- author-only except delete, which the list's owner/editors can also do
--- (same moderation reach they have over levels and records).
+-- estimated rank, the publisher, and a thumbnail — header reads "Ship of
+-- Fools (Verifying Top 5)"). Up to three "runs" record the percentage
+-- stretch of the level reached on a given attempt (e.g. 12%-84%), shown
+-- as a progress bar; editable any time by the author. Public read, same
+-- as everything else in a list; writes are author-only except delete,
+-- which the list's owner/editors can also do (same moderation reach
+-- they have over levels and records).
 -- ============================================================
 
 create table level_progress (
@@ -1102,12 +1103,9 @@ create table level_progress (
   level_id uuid references levels(id) on delete cascade,      -- set when mode = 'beating'
   level_name text,                                            -- set when mode = 'verifying'
   estimated_rank int,                                         -- set when mode = 'verifying'
-  permission_from text not null default '',                   -- verifying: the level's victor/verifier they got permission from
   publisher text not null default '',                         -- verifying: the level's publisher
   thumbnail_url text,                                         -- verifying: optional, same data-URI pattern as levels.image_url
-  note1 text not null default '',
-  note2 text not null default '',
-  note3 text not null default '',
+  runs jsonb not null default '[]',                           -- up to 3 { "start": int, "end": int } percentage ranges
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   check (

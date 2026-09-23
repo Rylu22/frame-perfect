@@ -2,14 +2,13 @@
 
 import type { ReactNode } from "react";
 import type { ProgressBlock } from "./progress-board";
+import RunBar from "./run-bar";
 
 export default function ProgressCard({ block, actions }: { block: ProgressBlock; actions?: ReactNode }) {
   const header =
     block.mode === "beating"
       ? `${block.levelName} (Top ${block.rank ?? "?"})`
       : `${block.levelName} (Verifying Top ${block.rank ?? "?"})`;
-
-  const notes = [block.note1, block.note2, block.note3].filter((n) => n.trim());
 
   return (
     <div className="level-card">
@@ -25,21 +24,13 @@ export default function ProgressCard({ block, actions }: { block: ProgressBlock;
         </div>
         <div className="lv-meta">
           By {block.username} &middot; {block.mode === "beating" ? "Beating" : "Verifying"}
-          {block.mode === "verifying" && (
-            <>
-              {" "}
-              &middot; Publisher: {block.publisher || "—"} &middot; Permission from:{" "}
-              {block.permissionFrom || "—"}
-            </>
-          )}
+          {block.mode === "verifying" && <> &middot; Publisher: {block.publisher || "—"}</>}
         </div>
 
-        {notes.length > 0 && (
-          <div style={{ marginTop: "8px" }}>
-            {notes.map((note, i) => (
-              <div key={i} className="empty-note" style={{ marginBottom: "4px", whiteSpace: "pre-wrap" }}>
-                {note}
-              </div>
+        {block.runs.length > 0 && (
+          <div style={{ marginTop: "10px", display: "flex", flexDirection: "column", gap: "8px" }}>
+            {block.runs.map((run, i) => (
+              <RunBar key={i} start={run.start} end={run.end} />
             ))}
           </div>
         )}
