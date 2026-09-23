@@ -718,6 +718,10 @@ label {
   clip-path: polygon(16px 0, 100% 0, 100% calc(100% - 16px), calc(100% - 16px) 100%, 0 100%, 0 16px);
   padding: 12px;
   overflow: hidden;
+  cursor: grab;
+}
+.progress-card.drag-over {
+  border-color: #fff;
 }
 .progress-card-top {
   display: flex;

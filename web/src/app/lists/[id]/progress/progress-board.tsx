@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import ConfirmDialog from "@/components/confirm-dialog";
@@ -18,6 +18,7 @@ export type ProgressBlock = {
   publisher: string;
   thumbnailUrl: string | null;
   runs: { start: number; end: number }[];
+  position: number;
 };
 
 export default function ProgressBoard({
@@ -26,18 +27,32 @@ export default function ProgressBoard({
   blocks,
   currentUserId,
   readOnly,
+  canReorder,
 }: {
   listId: string;
   levels: { id: string; name: string; position: number }[];
   blocks: ProgressBlock[];
   currentUserId: string | null;
   readOnly: boolean;
+  canReorder: boolean;
 }) {
   const router = useRouter();
+  // Derived state, reset whenever the server-fetched `blocks` prop changes
+  // identity (e.g. after router.refresh()) — same pattern as Builder's
+  // orderedLevels.
+  const [prevBlocksProp, setPrevBlocksProp] = useState(blocks);
+  const [orderedBlocks, setOrderedBlocks] = useState(blocks);
+  if (blocks !== prevBlocksProp) {
+    setPrevBlocksProp(blocks);
+    setOrderedBlocks(blocks);
+  }
+
   const [modalOpen, setModalOpen] = useState(false);
   const [editingBlock, setEditingBlock] = useState<ProgressBlock | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<ProgressBlock | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const dragIdRef = useRef<string | null>(null);
 
   function openAdd() {
     setEditingBlock(null);
@@ -62,6 +77,29 @@ export default function ProgressBoard({
     router.refresh();
   }
 
+  async function handleDrop(targetId: string) {
+    const srcId = dragIdRef.current;
+    dragIdRef.current = null;
+    setDragOverId(null);
+    if (!srcId || srcId === targetId) return;
+
+    const current = [...orderedBlocks];
+    const fromIdx = current.findIndex((b) => b.id === srcId);
+    const toIdx = current.findIndex((b) => b.id === targetId);
+    if (fromIdx === -1 || toIdx === -1) return;
+    const [moved] = current.splice(fromIdx, 1);
+    current.splice(toIdx, 0, moved);
+    setOrderedBlocks(current);
+
+    const supabase = createClient();
+    const { error } = await supabase.rpc("reorder_progress_blocks", {
+      p_list_id: listId,
+      p_ordered_ids: current.map((b) => b.id),
+    });
+    if (error) setError(error.message);
+    router.refresh();
+  }
+
   const canPost = currentUserId !== null && !readOnly;
 
   return (
@@ -76,14 +114,35 @@ export default function ProgressBoard({
 
       <div className={`msg ${error ? "error" : ""}`}>{error}</div>
 
-      {blocks.length === 0 ? (
+      {orderedBlocks.length === 0 ? (
         <div className="empty-note">No progress blocks yet. Be the first to post what you&apos;re working on.</div>
       ) : (
         <div className="progress-grid">
-          {blocks.map((block) => (
+          {orderedBlocks.map((block) => (
             <ProgressCard
               key={block.id}
               block={block}
+              cardProps={
+                canReorder
+                  ? {
+                      draggable: true,
+                      className: dragOverId === block.id ? "drag-over" : "",
+                      onDragStart: () => {
+                        dragIdRef.current = block.id;
+                      },
+                      onDragEnd: () => setDragOverId(null),
+                      onDragOver: (e) => {
+                        e.preventDefault();
+                        setDragOverId(block.id);
+                      },
+                      onDragLeave: () => setDragOverId((id) => (id === block.id ? null : id)),
+                      onDrop: (e) => {
+                        e.preventDefault();
+                        handleDrop(block.id);
+                      },
+                    }
+                  : undefined
+              }
               actions={
                 canPost && block.userId === currentUserId ? (
                   <>
@@ -109,6 +168,7 @@ export default function ProgressBoard({
           listId={listId}
           levels={levels}
           editingBlock={editingBlock}
+          nextPosition={orderedBlocks.length + 1}
         />
       )}
 

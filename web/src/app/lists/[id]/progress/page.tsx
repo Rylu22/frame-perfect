@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getViewAsContext } from "@/lib/view-as";
+import { canEditList } from "@/lib/list-access";
 import ProgressBoard, { type ProgressBlock } from "./progress-board";
 
 type ProgressQueryRow = {
@@ -14,6 +15,7 @@ type ProgressQueryRow = {
   publisher: string;
   thumbnail_url: string | null;
   runs: { start: number; end: number }[];
+  position: number;
   profiles: { username: string } | { username: string }[] | null;
   levels:
     | { name: string; position: number; image_url: string | null }
@@ -33,6 +35,10 @@ export default async function ProgressPage({
   const { data: list } = await supabase.from("lists").select("id, name").eq("id", id).single();
   if (!list) notFound();
 
+  // Same rule as the main Builder/Viewer split: while viewing-as, never
+  // show reorder controls even for an account that owns/edits this list.
+  const canReorder = !viewAsUserId && (await canEditList(supabase, id, user?.id));
+
   const { data: levelRows } = await supabase
     .from("levels")
     .select("id, name, position")
@@ -42,10 +48,10 @@ export default async function ProgressPage({
   const { data: progressRows } = await supabase
     .from("level_progress")
     .select(
-      "id, user_id, mode, level_id, level_name, estimated_rank, publisher, thumbnail_url, runs, profiles!user_id(username), levels(name, position, image_url)",
+      "id, user_id, mode, level_id, level_name, estimated_rank, publisher, thumbnail_url, runs, position, profiles!user_id(username), levels(name, position, image_url)",
     )
     .eq("list_id", id)
-    .order("updated_at", { ascending: false })
+    .order("position")
     .returns<ProgressQueryRow[]>();
 
   const blocks: ProgressBlock[] = (progressRows ?? []).map((row) => {
@@ -62,6 +68,7 @@ export default async function ProgressPage({
       publisher: row.publisher,
       thumbnailUrl: row.mode === "beating" ? (level?.image_url ?? null) : row.thumbnail_url,
       runs: row.runs ?? [],
+      position: row.position,
     };
   });
 
@@ -79,6 +86,7 @@ export default async function ProgressPage({
           blocks={blocks}
           currentUserId={user?.id ?? null}
           readOnly={!!viewAsUserId}
+          canReorder={canReorder}
         />
       </div>
     </div>

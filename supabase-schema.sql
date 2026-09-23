@@ -1089,10 +1089,11 @@ $$;
 -- estimated rank, the publisher, and a thumbnail — header reads "Ship of
 -- Fools (Verifying Top 5)"). Up to three "runs" record the percentage
 -- stretch of the level reached on a given attempt (e.g. 12%-84%), shown
--- as a progress bar; editable any time by the author. Public read, same
--- as everything else in a list; writes are author-only except delete,
--- which the list's owner/editors can also do (same moderation reach
--- they have over levels and records).
+-- as a progress bar; editable any time by the author. Display order is
+-- manual (position), drag-and-drop reorderable by the list's owner/
+-- editors only, via the reorder_progress_blocks() function (checks
+-- authorization itself, not RLS). Public read, same as everything else
+-- in a list; writes are author-only except delete (also owner/editors).
 -- ============================================================
 
 create table level_progress (
@@ -1106,6 +1107,7 @@ create table level_progress (
   publisher text not null default '',                         -- verifying: the level's publisher
   thumbnail_url text,                                         -- verifying: optional, same data-URI pattern as levels.image_url
   runs jsonb not null default '[]',                           -- up to 3 { "start": int, "end": int } percentage ranges
+  position int not null default 0,                            -- manual display order within the list, owner/editor-reorderable
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   check (
@@ -1136,3 +1138,38 @@ create policy "authors and list managers delete progress blocks"
            or exists (select 1 from list_editors e where e.list_id = l.id and e.user_id = auth.uid()))
     )
   );
+
+-- reorder_progress_blocks: applied after a drag-and-drop reorder on the
+-- client — takes the full new ordering as an array of block ids and
+-- reassigns positions 1..N to match. Owner/editors only — checked
+-- explicitly (security definer, so it isn't just relying on the
+-- author-only update policy above, which would otherwise let a regular
+-- player quietly reposition their own single block via this RPC).
+create or replace function public.reorder_progress_blocks(p_list_id uuid, p_ordered_ids uuid[])
+returns void
+language plpgsql
+security definer set search_path = public
+as $$
+declare
+  v_id uuid;
+  v_pos int;
+begin
+  if not public.is_list_owner_or_editor(p_list_id, auth.uid()) then
+    raise exception 'not authorized';
+  end if;
+
+  if (select count(*) from level_progress where list_id = p_list_id) <> coalesce(array_length(p_ordered_ids, 1), 0) then
+    raise exception 'ordered_ids does not match the list''s progress block count';
+  end if;
+
+  update level_progress set position = position + 100000 where list_id = p_list_id;
+
+  v_pos := 1;
+  foreach v_id in array p_ordered_ids loop
+    update level_progress
+      set position = v_pos
+      where id = v_id and list_id = p_list_id;
+    v_pos := v_pos + 1;
+  end loop;
+end;
+$$;

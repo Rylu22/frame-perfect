@@ -16,12 +16,14 @@ export default function ProgressModal({
   listId,
   levels,
   editingBlock,
+  nextPosition,
 }: {
   onClose: () => void;
   onSaved: () => void;
   listId: string;
   levels: { id: string; name: string; position: number }[];
   editingBlock: ProgressBlock | null;
+  nextPosition: number;
 }) {
   const [mode, setMode] = useState<Mode>(editingBlock?.mode ?? "beating");
   const [levelId, setLevelId] = useState(editingBlock?.levelId ?? levels[0]?.id ?? "");
@@ -132,6 +134,7 @@ export default function ProgressModal({
         data: { user },
       } = await supabase.auth.getUser();
       payload.user_id = user?.id;
+      payload.position = nextPosition;
       const { error: dbError } = await supabase.from("level_progress").insert(payload);
       setSaving(false);
       if (dbError) {

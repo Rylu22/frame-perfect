@@ -1,17 +1,26 @@
 "use client";
 
-import type { ReactNode } from "react";
+import type { HTMLAttributes, ReactNode } from "react";
 import type { ProgressBlock } from "./progress-board";
 import RunBar from "./run-bar";
 
-export default function ProgressCard({ block, actions }: { block: ProgressBlock; actions?: ReactNode }) {
+export default function ProgressCard({
+  block,
+  actions,
+  cardProps,
+}: {
+  block: ProgressBlock;
+  actions?: ReactNode;
+  cardProps?: HTMLAttributes<HTMLDivElement>;
+}) {
   const header =
     block.mode === "beating"
       ? `${block.levelName} (Top ${block.rank ?? "?"})`
       : `${block.levelName} (Verifying Top ${block.rank ?? "?"})`;
+  const { className: extraClassName, ...restCardProps } = cardProps ?? {};
 
   return (
-    <div className="progress-card">
+    <div className={`progress-card ${extraClassName ?? ""}`.trim()} {...restCardProps}>
       <div className="progress-card-top">
         {block.thumbnailUrl ? (
           // eslint-disable-next-line @next/next/no-img-element -- data URI / stored image, not a remote asset needing next/image
