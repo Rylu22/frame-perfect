@@ -122,7 +122,6 @@ export default async function ListPage({
             listName={list.name}
             targetSize={list.target_size}
             pointsMode={pointsMode}
-            ownerUsername={ownerUsername}
             levels={levels}
           />
         ) : (

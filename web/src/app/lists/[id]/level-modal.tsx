@@ -18,7 +18,6 @@ export default function LevelModal({
   onClose,
   onSaved,
   listId,
-  ownerUsername,
   pointsMode,
   defaultPosition,
   editingLevel,
@@ -27,7 +26,6 @@ export default function LevelModal({
   onClose: () => void;
   onSaved: (savedLevel?: { id: string }) => void;
   listId: string;
-  ownerUsername: string;
   pointsMode: "level" | "rank";
   defaultPosition: number;
   editingLevel: EditingLevel | null;
@@ -86,13 +84,6 @@ export default function LevelModal({
 
       if (!match) {
         setError(`"${trimmedVerifier}" isn't a registered account. The verifier must sign up first.`);
-        setSaving(false);
-        return;
-      }
-      if (match.username.toLowerCase() === ownerUsername.toLowerCase()) {
-        setError(
-          "The list moderator can't be the verifier. Use a separate account to submit and accept that verification.",
-        );
         setSaving(false);
         return;
       }

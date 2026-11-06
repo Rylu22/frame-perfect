@@ -22,14 +22,12 @@ export type FeedRecord = {
 export default function RecordFeed({
   listId,
   listName,
-  ownerUsername,
   pointsMode,
   levelCount,
   records,
 }: {
   listId: string;
   listName: string;
-  ownerUsername: string;
   pointsMode: "level" | "rank";
   levelCount: number;
   records: FeedRecord[];
@@ -130,7 +128,6 @@ export default function RecordFeed({
             router.refresh();
           }}
           listId={listId}
-          ownerUsername={ownerUsername}
           pointsMode={pointsMode}
           defaultPosition={levelCount + 1}
           editingLevel={null}

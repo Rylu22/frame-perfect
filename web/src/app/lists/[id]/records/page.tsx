@@ -33,14 +33,12 @@ export default async function RecordFeedPage({
 
   const { data: list } = await supabase
     .from("lists")
-    .select("id, name, owner_id, points_mode, profiles!owner_id(username)")
+    .select("id, name, points_mode")
     .eq("id", id)
     .single();
 
   if (!list) notFound();
   if (!(await canEditList(supabase, id, user?.id))) redirect(`/lists/${id}`);
-
-  const ownerProfile = Array.isArray(list.profiles) ? list.profiles[0] : list.profiles;
 
   const { count: levelCount } = await supabase
     .from("levels")
@@ -82,7 +80,6 @@ export default async function RecordFeedPage({
         <RecordFeed
           listId={id}
           listName={list.name}
-          ownerUsername={ownerProfile?.username ?? "unknown"}
           pointsMode={list.points_mode === "rank" ? "rank" : "level"}
           levelCount={levelCount ?? 0}
           records={records}

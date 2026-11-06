@@ -1173,3 +1173,44 @@ begin
   end loop;
 end;
 $$;
+
+-- ============================================================
+-- LET OWNERS AND EDITORS SUBMIT AND ACCEPT THEIR OWN RECORDS
+-- A list's moderators can now submit records to their own list and
+-- accept them from the Record Feed, so:
+--   - check_record_not_from_owner no longer rejects the owner (the
+--     sandbox and verifier-can't-also-be-a-victor checks stay), and
+--   - the owner may be credited as a level's verifier (needed when they
+--     accept their own verifier record).
+-- ============================================================
+create or replace function public.check_record_not_from_owner()
+returns trigger
+language plpgsql
+as $$
+declare
+  v_owner uuid;
+  v_submitter_is_test boolean;
+  v_owner_is_test boolean;
+  v_level_verifier uuid;
+begin
+  select owner_id into v_owner from lists where id = new.list_id;
+
+  select is_test into v_submitter_is_test from profiles where id = new.submitted_by;
+  select is_test into v_owner_is_test from profiles where id = v_owner;
+  if coalesce(v_submitter_is_test, false) is distinct from coalesce(v_owner_is_test, false) then
+    raise exception 'Testing sandbox accounts can only submit records to testing sandbox lists.';
+  end if;
+
+  if new.type = 'victor' and new.level_id is not null then
+    select verifier_id into v_level_verifier from levels where id = new.level_id;
+    if v_level_verifier is not null and v_level_verifier = new.submitted_by then
+      raise exception 'The verifier of a level cannot also submit a victor record for it — they already get credit for it as its verifier.';
+    end if;
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists levels_verifier_not_owner on levels;
+drop function if exists public.check_verifier_not_owner();

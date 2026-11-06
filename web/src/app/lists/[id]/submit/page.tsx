@@ -2,7 +2,6 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getViewAsContext } from "@/lib/view-as";
-import { canEditList } from "@/lib/list-access";
 import SubmitRecordForm from "./submit-record-form";
 
 export default async function SubmitRecordPage({
@@ -20,11 +19,11 @@ export default async function SubmitRecordPage({
 
   const { data: list } = await supabase.from("lists").select("id, name, rules, owner_id").eq("id", id).single();
   if (!list) notFound();
-  // Owners and editors can't submit to a list they moderate, and an admin
-  // currently viewing as someone else is read-only everywhere — including
-  // here, even though the write itself would technically go through as
-  // the admin's real account, not the account being viewed.
-  if (viewAsUserId || (await canEditList(supabase, id, user.id))) {
+  // An admin currently viewing as someone else is read-only everywhere —
+  // including here, even though the write itself would technically go
+  // through as the admin's real account, not the account being viewed.
+  // (Owners and editors can submit, and accept, their own records.)
+  if (viewAsUserId) {
     redirect(`/lists/${id}`);
   }
 

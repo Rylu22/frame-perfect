@@ -28,14 +28,12 @@ export default function Builder({
   listName,
   targetSize,
   pointsMode,
-  ownerUsername,
   levels,
 }: {
   listId: string;
   listName: string;
   targetSize: number;
   pointsMode: "level" | "rank";
-  ownerUsername: string;
   levels: BuilderLevel[];
 }) {
   const router = useRouter();
@@ -119,6 +117,9 @@ export default function Builder({
               {s.label}
             </Link>
           ))}
+          <Link className="btn btn-ghost" href={`/lists/${listId}/submit`}>
+            Submit a Record
+          </Link>
           <button className="btn btn-primary" onClick={openAdd}>
             + Add Level
           </button>
@@ -172,7 +173,6 @@ export default function Builder({
           onClose={() => setModalOpen(false)}
           onSaved={handleSaved}
           listId={listId}
-          ownerUsername={ownerUsername}
           pointsMode={pointsMode}
           defaultPosition={orderedLevels.length + 1}
           editingLevel={editingLevel}
