@@ -1214,3 +1214,282 @@ $$;
 
 drop trigger if exists levels_verifier_not_owner on levels;
 drop function if exists public.check_verifier_not_owner();
+
+-- ============================================================
+-- LEVEL PLACEMENT HISTORY + TIME MACHINE
+-- Every committed change to a list (levels, victors, legacy, points
+-- config) records one snapshot of the list's full state. Snapshots are
+-- taken by DEFERRED constraint triggers, so they fire once at commit and
+-- see the final state of each RPC (never the transient +100000 position
+-- shuffles), and no write path can skip them. The cause of each change
+-- (a level added / moved / removed) is inferred by diffing against the
+-- previous snapshot, which is what lets a level's history say *why* it
+-- moved ("pushed down when X was added at #2").
+--
+-- Images and descriptions aren't snapshotted (they're large, and not
+-- part of placement or points); the time machine shows a level's current
+-- ones.
+-- ============================================================
+
+create table if not exists list_snapshots (
+  id bigserial primary key,
+  list_id uuid not null references lists(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  actor_id uuid references profiles(id) on delete set null,
+  cause jsonb not null default '{}',
+  state jsonb not null
+);
+create index if not exists list_snapshots_list_time on list_snapshots (list_id, created_at, id);
+
+alter table list_snapshots enable row level security;
+drop policy if exists "list snapshots follow list visibility" on list_snapshots;
+create policy "list snapshots follow list visibility"
+  on list_snapshots for select using (exists (select 1 from lists l where l.id = list_id));
+-- No insert/update/delete policies: only the security-definer snapshot
+-- function below writes here.
+
+create or replace function public.build_list_state(p_list_id uuid)
+returns jsonb
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select jsonb_build_object(
+    'points_mode', l.points_mode,
+    'rank_points', l.rank_points,
+    'target_size', l.target_size,
+    'levels', coalesce((
+      select jsonb_agg(jsonb_build_object(
+        'id', lv.id, 'name', lv.name, 'difficulty', lv.difficulty, 'position', lv.position,
+        'points', lv.points, 'verifier_id', lv.verifier_id, 'publisher', lv.publisher,
+        'victors', coalesce((select jsonb_agg(v.user_id order by v.awarded_at, v.user_id)
+                             from level_victors v where v.level_id = lv.id), '[]'::jsonb)
+      ) order by lv.position)
+      from levels lv where lv.list_id = l.id
+    ), '[]'::jsonb),
+    'legacy', coalesce((
+      select jsonb_agg(jsonb_build_object(
+        'id', g.id, 'name', g.name, 'difficulty', g.difficulty, 'points', g.points,
+        'best_rank', g.best_rank, 'pushed_off_by', g.pushed_off_by, 'verifier_id', g.verifier_id,
+        'victors', coalesce((select jsonb_agg(v.user_id order by v.user_id)
+                             from legacy_victors v where v.legacy_level_id = g.id), '[]'::jsonb)
+      ) order by g.best_rank, g.id)
+      from legacy_levels g where g.list_id = l.id
+    ), '[]'::jsonb)
+  )
+  from lists l where l.id = p_list_id;
+$$;
+
+create or replace function public.snapshot_list(p_list_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_new jsonb;
+  v_prev jsonb;
+  v_cause jsonb;
+  v_row record;
+begin
+  if not exists (select 1 from lists where id = p_list_id) then
+    return; -- the list itself is being deleted
+  end if;
+
+  v_new := public.build_list_state(p_list_id);
+  select state into v_prev from list_snapshots
+    where list_id = p_list_id order by created_at desc, id desc limit 1;
+
+  if v_prev is not null and v_prev = v_new then
+    return; -- nothing that matters changed (e.g. rules text, verifier_record_id)
+  end if;
+
+  if v_prev is null then
+    v_cause := jsonb_build_object('type', 'created');
+  else
+    -- A level that wasn't on the main list before: an addition.
+    select n.e into v_row from jsonb_array_elements(v_new->'levels') as n(e)
+      where not exists (select 1 from jsonb_array_elements(v_prev->'levels') as p(e) where p.e->>'id' = n.e->>'id')
+      order by (n.e->>'position')::int limit 1;
+    if found then
+      v_cause := jsonb_build_object('type', 'add', 'level_id', v_row.e->>'id', 'level_name', v_row.e->>'name',
+                                    'to', (v_row.e->>'position')::int);
+    else
+      -- A level that left the main list without an addition: a removal.
+      select p.e into v_row from jsonb_array_elements(v_prev->'levels') as p(e)
+        where not exists (select 1 from jsonb_array_elements(v_new->'levels') as n(e) where n.e->>'id' = p.e->>'id')
+        order by (p.e->>'position')::int limit 1;
+      if found then
+        v_cause := jsonb_build_object('type', 'delete', 'level_id', v_row.e->>'id', 'level_name', v_row.e->>'name',
+                                      'from', (v_row.e->>'position')::int);
+      else
+        -- Positions shuffled: the level that moved furthest is the one
+        -- that was moved; everything else just shifted by one around it.
+        select n.e as ne, p.e as pe into v_row
+          from jsonb_array_elements(v_new->'levels') as n(e)
+          join jsonb_array_elements(v_prev->'levels') as p(e) on p.e->>'id' = n.e->>'id'
+          where (p.e->>'position')::int <> (n.e->>'position')::int
+          order by abs((n.e->>'position')::int - (p.e->>'position')::int) desc, (n.e->>'position')::int
+          limit 1;
+        if found then
+          v_cause := jsonb_build_object('type', 'move', 'level_id', v_row.ne->>'id', 'level_name', v_row.ne->>'name',
+                                        'from', (v_row.pe->>'position')::int, 'to', (v_row.ne->>'position')::int);
+        else
+          v_cause := jsonb_build_object('type', 'update');
+        end if;
+      end if;
+    end if;
+  end if;
+
+  insert into list_snapshots (list_id, actor_id, cause, state)
+  values (p_list_id, auth.uid(), v_cause, v_new);
+end;
+$$;
+
+revoke execute on function public.build_list_state(uuid) from public, anon, authenticated;
+revoke execute on function public.snapshot_list(uuid) from public, anon, authenticated;
+
+create or replace function public.queue_list_snapshot()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_list uuid;
+  v_key text;
+begin
+  if tg_op = 'DELETE' then
+    if tg_table_name in ('levels', 'legacy_levels') then
+      v_list := old.list_id;
+    elsif tg_table_name = 'level_victors' then
+      select list_id into v_list from levels where id = old.level_id;
+    elsif tg_table_name = 'legacy_victors' then
+      select list_id into v_list from legacy_levels where id = old.legacy_level_id;
+    end if;
+  else
+    if tg_table_name = 'lists' then
+      v_list := new.id;
+    elsif tg_table_name in ('levels', 'legacy_levels') then
+      v_list := new.list_id;
+    elsif tg_table_name = 'level_victors' then
+      select list_id into v_list from levels where id = new.level_id;
+    elsif tg_table_name = 'legacy_victors' then
+      select list_id into v_list from legacy_levels where id = new.legacy_level_id;
+    end if;
+  end if;
+
+  if v_list is null then
+    return null;
+  end if;
+
+  -- One snapshot per list per transaction.
+  v_key := 'fp.snap_' || replace(v_list::text, '-', '');
+  if coalesce(current_setting(v_key, true), '') = '1' then
+    return null;
+  end if;
+  perform set_config(v_key, '1', true);
+
+  perform public.snapshot_list(v_list);
+  return null;
+end;
+$$;
+
+drop trigger if exists lists_snapshot on lists;
+create constraint trigger lists_snapshot after insert or update on lists
+  deferrable initially deferred for each row execute function public.queue_list_snapshot();
+drop trigger if exists levels_snapshot on levels;
+create constraint trigger levels_snapshot after insert or update or delete on levels
+  deferrable initially deferred for each row execute function public.queue_list_snapshot();
+drop trigger if exists level_victors_snapshot on level_victors;
+create constraint trigger level_victors_snapshot after insert or update or delete on level_victors
+  deferrable initially deferred for each row execute function public.queue_list_snapshot();
+drop trigger if exists legacy_levels_snapshot on legacy_levels;
+create constraint trigger legacy_levels_snapshot after insert or update or delete on legacy_levels
+  deferrable initially deferred for each row execute function public.queue_list_snapshot();
+drop trigger if exists legacy_victors_snapshot on legacy_victors;
+create constraint trigger legacy_victors_snapshot after insert or update or delete on legacy_victors
+  deferrable initially deferred for each row execute function public.queue_list_snapshot();
+
+-- Existing lists start their history now: one baseline snapshot each.
+insert into list_snapshots (list_id, cause, state)
+select l.id, jsonb_build_object('type', 'baseline'), public.build_list_state(l.id)
+from lists l
+where not exists (select 1 from list_snapshots s where s.list_id = l.id);
+
+-- A level's placement history: one row per snapshot where its status
+-- (on the list / legacy / gone) or position changed, with the cause.
+create or replace function public.get_level_history(p_list_id uuid, p_level_id uuid)
+returns table(at timestamptz, status text, pos int, prev_status text, prev_pos int, cause jsonb)
+language sql
+stable
+security invoker
+set search_path = public
+as $$
+  with s as (
+    select sn.id, sn.created_at, sn.cause,
+      (select (e->>'position')::int from jsonb_array_elements(sn.state->'levels') e
+        where e->>'id' = p_level_id::text) as pos,
+      exists (select 1 from jsonb_array_elements(sn.state->'legacy') e
+        where e->>'id' = p_level_id::text) as in_legacy
+    from list_snapshots sn
+    where sn.list_id = p_list_id
+  ), t as (
+    select id, created_at, cause, pos,
+      case when pos is not null then 'active' when in_legacy then 'legacy' else 'absent' end as status
+    from s
+  ), u as (
+    select *,
+      lag(status) over w as prev_status,
+      lag(pos) over w as prev_pos
+    from t
+    window w as (order by created_at, id)
+  )
+  select created_at, status, pos, prev_status, prev_pos, cause
+  from u
+  where (status is distinct from prev_status or pos is distinct from prev_pos)
+    and not (status = 'absent' and coalesce(prev_status, 'absent') = 'absent')
+  order by created_at, id;
+$$;
+
+-- Completions dropdown for the time machine: the verifier and victors a
+-- level had as of p_at, per that moment's snapshot.
+create or replace function public.get_level_completions_at(p_list_id uuid, p_level_id uuid, p_at timestamptz)
+returns table(role text, user_id uuid, username text, video_url text)
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  with snap as (
+    select s.state from list_snapshots s
+    join lists l on l.id = s.list_id
+    where s.list_id = p_list_id and s.created_at <= p_at
+    order by s.created_at desc, s.id desc limit 1
+  ), lvl as (
+    select e from snap, jsonb_array_elements(snap.state->'levels') e
+    where e->>'id' = p_level_id::text
+  )
+  select role, user_id, username, video_url from (
+    select 'verifier'::text as role, p.id as user_id, p.username,
+      case when r.video_private then null else r.video_url end as video_url,
+      0 as sort_order, 0::bigint as ord
+    from lvl
+    join profiles p on p.id = (lvl.e->>'verifier_id')::uuid
+    left join levels cur on cur.id = p_level_id and cur.verifier_id = p.id
+    left join records r on r.id = cur.verifier_record_id
+
+    union all
+
+    select 'victor'::text, p.id, p.username,
+      case when r.video_private then null else r.video_url end,
+      1, v.ord
+    from lvl
+    cross join lateral jsonb_array_elements_text(lvl.e->'victors') with ordinality as v(uid, ord)
+    join profiles p on p.id = v.uid::uuid
+    left join level_victors cur on cur.level_id = p_level_id and cur.user_id = p.id
+    left join records r on r.id = cur.record_id
+  ) combined
+  order by sort_order, ord;
+$$;

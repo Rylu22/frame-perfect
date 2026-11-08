@@ -134,6 +134,7 @@ export default function Builder({
         orderedLevels.map((level, i) => (
           <LevelCard
             key={level.id}
+            listId={listId}
             level={level}
             index={i}
             cardProps={{

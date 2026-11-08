@@ -3,6 +3,7 @@
 import { useState, type CSSProperties, type HTMLAttributes, type ReactNode } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { tierByKey } from "@/lib/tiers";
+import HistoryButton from "./level-history";
 
 export type LevelCardData = {
   id: string;
@@ -19,12 +20,17 @@ export type LevelCardData = {
 type Completion = { role: "verifier" | "victor"; user_id: string; username: string; video_url: string | null };
 
 export default function LevelCard({
+  listId,
+  at,
   level,
   index,
   actions,
   cardProps,
   completed,
 }: {
+  listId: string;
+  // Set while the time machine is active: completions reflect that moment.
+  at?: string | null;
   level: LevelCardData;
   index: number;
   actions?: ReactNode;
@@ -45,7 +51,9 @@ export default function LevelCard({
     if (next && completions === null) {
       setLoading(true);
       const supabase = createClient();
-      const { data } = await supabase.rpc("get_level_completions", { p_level_id: level.id });
+      const { data } = at
+        ? await supabase.rpc("get_level_completions_at", { p_list_id: listId, p_level_id: level.id, p_at: at })
+        : await supabase.rpc("get_level_completions", { p_level_id: level.id });
       setCompletions((data as Completion[] | null) ?? []);
       setLoading(false);
     }
@@ -80,6 +88,7 @@ export default function LevelCard({
           <span className="victor-count" onClick={toggleOpen}>
             {level.victor_count} victor{level.victor_count === 1 ? "" : "s"}
           </span>
+          <HistoryButton listId={listId} levelId={level.id} levelName={level.name} />
         </div>
         <div className="lv-meta">
           Verified by {level.verifier_username ?? "—"} &middot; Published by{" "}

@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { computeStandings, type ActiveLevelForPoints, type LegacyLevelForPoints } from "@/lib/points";
+import { loadListStateAt, type ListAtTime } from "@/lib/time-machine";
 
 export type StatsLevel = {
   id: string;
@@ -18,17 +19,22 @@ export type StatsLegacyLevel = {
   verifier_id: string | null;
 };
 
-export async function loadListPointsData(listId: string) {
-  const supabase = await createClient();
+type RawData = {
+  pointsMode: "level" | "rank";
+  rankPoints: Record<string, number>;
+  levels: StatsLevel[];
+  legacyLevels: StatsLegacyLevel[];
+  victorsByLevel: Map<string, string[]>;
+  legacyVictorsByLevel: Map<string, string[]>;
+};
 
-  const { data: list } = await supabase
-    .from("lists")
-    .select("id, name, points_mode, rank_points")
-    .eq("id", listId)
-    .single();
+type Supabase = Awaited<ReturnType<typeof createClient>>;
 
-  if (!list) return null;
-
+async function loadCurrent(
+  supabase: Supabase,
+  listId: string,
+  list: { points_mode: string; rank_points: unknown },
+): Promise<RawData> {
   const [{ data: levels }, { data: legacyLevels }] = await Promise.all([
     supabase
       .from("levels")
@@ -66,16 +72,64 @@ export async function loadListPointsData(listId: string) {
     ]);
   }
 
-  const pointsMode = list.points_mode === "rank" ? "rank" : "level";
-  const rankPoints = (list.rank_points as Record<string, number>) ?? {};
+  return {
+    pointsMode: list.points_mode === "rank" ? "rank" : "level",
+    rankPoints: (list.rank_points as Record<string, number>) ?? {},
+    levels: (levels ?? []).map((l) => ({ ...l, points: Number(l.points) })),
+    legacyLevels: (legacyLevels ?? []).map((l) => ({ ...l, points: Number(l.points) })),
+    victorsByLevel,
+    legacyVictorsByLevel,
+  };
+}
 
-  const activeForPoints: ActiveLevelForPoints[] = (levels ?? []).map((l) => ({
+function fromSnapshot(tm: ListAtTime): RawData {
+  const state = tm.state;
+  return {
+    pointsMode: state?.points_mode ?? "level",
+    rankPoints: state?.rank_points ?? {},
+    levels: (state?.levels ?? []).map((l) => ({
+      id: l.id,
+      name: l.name,
+      difficulty: l.difficulty,
+      position: l.position,
+      points: l.points,
+      verifier_id: l.verifier_id,
+    })),
+    legacyLevels: (state?.legacy ?? []).map((l) => ({
+      id: l.id,
+      name: l.name,
+      difficulty: l.difficulty,
+      points: l.points,
+      verifier_id: l.verifier_id,
+    })),
+    victorsByLevel: new Map((state?.levels ?? []).map((l) => [l.id, l.victors])),
+    legacyVictorsByLevel: new Map((state?.legacy ?? []).map((l) => [l.id, l.victors])),
+  };
+}
+
+// `at` (an ISO timestamp, from the time machine) loads the list as it was
+// at that moment from its snapshot history instead of its live tables.
+export async function loadListPointsData(listId: string, at?: string | null) {
+  const supabase = await createClient();
+
+  const { data: list } = await supabase
+    .from("lists")
+    .select("id, name, points_mode, rank_points")
+    .eq("id", listId)
+    .single();
+
+  if (!list) return null;
+
+  const timeMachine = at ? await loadListStateAt(supabase, listId, at) : null;
+  const raw = timeMachine ? fromSnapshot(timeMachine) : await loadCurrent(supabase, listId, list);
+
+  const activeForPoints: ActiveLevelForPoints[] = raw.levels.map((l) => ({
     id: l.id,
     position: l.position,
     points: l.points,
     verifier_id: l.verifier_id,
   }));
-  const legacyForPoints: LegacyLevelForPoints[] = (legacyLevels ?? []).map((l) => ({
+  const legacyForPoints: LegacyLevelForPoints[] = raw.legacyLevels.map((l) => ({
     id: l.id,
     points: l.points,
     verifier_id: l.verifier_id,
@@ -84,10 +138,10 @@ export async function loadListPointsData(listId: string) {
   const standingsMap = computeStandings(
     activeForPoints,
     legacyForPoints,
-    victorsByLevel,
-    legacyVictorsByLevel,
-    pointsMode,
-    rankPoints,
+    raw.victorsByLevel,
+    raw.legacyVictorsByLevel,
+    raw.pointsMode,
+    raw.rankPoints,
   );
 
   const userIds = [...standingsMap.keys()];
@@ -102,10 +156,14 @@ export async function loadListPointsData(listId: string) {
 
   return {
     list,
-    levels: levels ?? [],
-    legacyLevels: legacyLevels ?? [],
-    victorsByLevel,
-    legacyVictorsByLevel,
+    pointsMode: raw.pointsMode,
+    rankPoints: raw.rankPoints,
+    levels: raw.levels,
+    legacyLevels: raw.legacyLevels,
+    victorsByLevel: raw.victorsByLevel,
+    legacyVictorsByLevel: raw.legacyVictorsByLevel,
     standings,
+    timeMachine,
   };
 }
+

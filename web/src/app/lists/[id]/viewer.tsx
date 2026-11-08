@@ -1,5 +1,6 @@
 import Link from "next/link";
 import LevelCard, { type LevelCardData } from "./level-card";
+import { withAt } from "@/lib/time-machine";
 
 export default function Viewer({
   listId,
@@ -12,6 +13,7 @@ export default function Viewer({
   myPoints,
   myCompleted,
   completedLevelIds,
+  at,
 }: {
   listId: string;
   listName: string;
@@ -23,6 +25,7 @@ export default function Viewer({
   myPoints: number | null;
   myCompleted: number | null;
   completedLevelIds: Set<string>;
+  at: string | null;
 }) {
   return (
     <div>
@@ -32,10 +35,10 @@ export default function Viewer({
           {levels.length} / {targetSize} levels
         </div>
         <div style={{ color: "var(--muted)", fontSize: "13px" }}>by {ownerUsername}</div>
-        <Link className="btn btn-ghost btn-sm" href={`/lists/${listId}/stats`}>
+        <Link className="btn btn-ghost btn-sm" href={withAt(`/lists/${listId}/stats`, at)}>
           Stats Viewer
         </Link>
-        <Link className="btn btn-ghost btn-sm" href={`/lists/${listId}/legacy`}>
+        <Link className="btn btn-ghost btn-sm" href={withAt(`/lists/${listId}/legacy`, at)}>
           Legacy List
         </Link>
         <Link className="btn btn-ghost btn-sm" href={`/lists/${listId}/progress`}>
@@ -49,7 +52,7 @@ export default function Viewer({
             {myCompleted ?? 0} / {levels.length} levels completed
           </div>
           <div className="progress-chip">Your points: {(myPoints ?? 0).toFixed(2)}</div>
-          {canSubmit && (
+          {canSubmit && !at && (
             <Link className="btn btn-primary btn-sm" href={`/lists/${listId}/submit`}>
               Submit a Record
             </Link>
@@ -68,7 +71,14 @@ export default function Viewer({
         <div className="empty-note">This list has no levels yet.</div>
       ) : (
         levels.map((lv, i) => (
-          <LevelCard key={lv.id} level={lv} index={i} completed={completedLevelIds.has(lv.id)} />
+          <LevelCard
+            key={lv.id}
+            listId={listId}
+            at={at}
+            level={lv}
+            index={i}
+            completed={completedLevelIds.has(lv.id)}
+          />
         ))
       )}
     </div>

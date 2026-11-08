@@ -2,10 +2,19 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { withAt } from "@/lib/time-machine";
 
 export type StandingRow = { userId: string; username: string; points: number };
 
-export default function Leaderboard({ listId, standings }: { listId: string; standings: StandingRow[] }) {
+export default function Leaderboard({
+  listId,
+  standings,
+  at,
+}: {
+  listId: string;
+  standings: StandingRow[];
+  at: string | null;
+}) {
   const [search, setSearch] = useState("");
 
   const entries = useMemo(() => {
@@ -28,7 +37,7 @@ export default function Leaderboard({ listId, standings }: { listId: string; sta
         <div className="empty-note">No matching players.</div>
       ) : (
         entries.map((s) => (
-          <Link className="points-row" key={s.userId} href={`/lists/${listId}/stats/${s.username}`}>
+          <Link className="points-row" key={s.userId} href={withAt(`/lists/${listId}/stats/${s.username}`, at)}>
             <span className="pname">
               <span className="lg-rank" style={{ marginRight: "8px" }}>
                 #{s.rank}
